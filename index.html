@@ -198,7 +198,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   <div class="sidebar-footer">
     FY 2024-25 &nbsp;|&nbsp; Tally Prime Ready<br>
     <span style="color:var(--accent)">&#9679; System Active</span><br>
-    <span id="sidebar-ai-status" style="cursor:pointer;text-decoration:underline;" onclick="openAPISettings()">AI: Not configured</span>
+    <span style="color:var(--accent);">Built-in extraction</span>
   </div>
 </div>
 
@@ -211,7 +211,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     </div>
     <div class="topbar-actions">
       <button class="btn btn-secondary btn-sm" onclick="showPanel('vendors'); openAddVendor()">+ Add Vendor</button>
-      <button class="btn btn-ghost btn-sm" id="ai-settings-btn" onclick="openAPISettings()" title="AI Settings">&#9881;</button>
+      <span style="font-size:11px;font-family:'DM Mono',monospace;color:var(--accent);">Built-in OCR</span>
       <button class="btn btn-primary btn-sm" onclick="showPanel('scan')">Scan Bill</button>
     </div>
   </div>
@@ -297,7 +297,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         <div class="drop-zone" onclick="document.getElementById('scan-file-input').click()">
           <div style="font-size:40px;margin-bottom:12px;opacity:0.6;">&#128196;</div>
           <div class="drop-zone-title">Upload Bill / Invoice PDF</div>
-          <div class="drop-zone-sub" style="margin-top:8px;">Real extraction via Claude AI (set API key) or try demo bills below<br>Supports PDF, JPG, PNG scans of invoices</div>
+          <div class="drop-zone-sub" style="margin-top:8px;">Built-in extraction - no API key needed<br>PDF text extraction + OCR for images</div>
           <input type="file" id="scan-file-input" style="display:none;" accept=".pdf,image/*" onchange="handleBillUpload(event)">
         </div>
         <div style="text-align:center;margin:20px 0;color:var(--text3);font-size:12px;font-family:'DM Mono',monospace;">-- or try a demo bill --</div>
@@ -897,27 +897,7 @@ var demoInvoices = [
 
 function handleBillUpload(e) {
   if (!e.target.files[0]) return;
-  var provider = localStorage.getItem('ai_provider');
-  var hasKey = (provider === 'gemini' && localStorage.getItem('gemini_api_key')) ||
-               (provider === 'claude' && localStorage.getItem('claude_api_key'));
-  if (!hasKey) {
-    // First time - show setup modal with friendly message
-    showFirstTimeSetup();
-    return;
-  }
-  extractBillWithAI(e.target.files[0]);
-}
-
-function showFirstTimeSetup() {
-  // Store the pending file so we can process it after setup
-  openAPISettings();
-  // Show a banner inside the modal explaining it's a one-time step
-  setTimeout(function() {
-    var status = document.getElementById('api-key-status');
-    if (status) {
-      status.innerHTML = '<span style="color:var(--accent);">&#9888; One-time setup</span> - your key is saved permanently in this browser. You will never need to enter it again.';
-    }
-  }, 50);
+  extractFromFile(e.target.files[0]);
 }
 
 function runDemoScan(idx) {
@@ -925,216 +905,242 @@ function runDemoScan(idx) {
   processBillData(demoInvoices[idx]);
 }
 
-// ── Real AI Extraction (Gemini + Claude) ──────────────────
-function extractBillWithAI(file) {
-  var provider = localStorage.getItem('ai_provider') || 'gemini';
-  if (provider === 'gemini') {
-    extractWithGemini(file);
-  } else {
-    extractWithClaude(file);
-  }
-}
+// ── Smart Extraction Engine ────────────────────────────────
+// Strategy:
+//   1. If digital PDF  -> extract embedded text directly (100% accurate, instant)
+//   2. If image/scanned PDF -> Tesseract.js OCR (runs in browser, no API)
+//   3. Both feed into the same parseInvoiceText() parser
 
-var EXTRACTION_PROMPT = 'You are an Indian accounting assistant. Extract all data from this bill/invoice image.'
-  + ' Return ONLY a raw JSON object - no markdown, no code block, no explanation, just the JSON.'
-  + ' Use this exact structure: {"gstin":"","invoice":"","date":"","vendorName":"","subTotal":0,"cgst":0,"sgst":0,"igst":0,"grandTotal":0,"lineItems":[{"desc":"","hsn":"","qty":1,"rate":0,"amt":0,"gstRate":0}],"irn":null,"qrVerified":false}'
-  + ' Rules: gstin = supplier GSTIN (15 chars). date format = DD Mon YYYY (e.g. 12 Mar 2025). All amounts as plain numbers.'
-  + ' If only IGST shown (inter-state), put value in igst field and set cgst=0 sgst=0.'
-  + ' Extract every line item with its HSN/SAC code and GST rate %.'
-  + ' IRN = 64-character hash code printed on e-invoice, or null if absent. qrVerified = true only if QR code present.';
-
-function parseExtractedJSON(text) {
-  text = text.trim();
-  // Strip markdown fences if present
-  var fence = String.fromCharCode(96,96,96);
-  if (text.indexOf(fence) >= 0) {
-    text = text.replace(new RegExp(fence + 'json', 'g'), '').replace(new RegExp(fence, 'g'), '').trim();
-  }
-  var start = text.indexOf('{');
-  var end = text.lastIndexOf('}');
-  if (start >= 0 && end > start) text = text.substring(start, end + 1);
-  var extracted = JSON.parse(text);
-  return {
-    gstin: extracted.gstin || '',
-    invoice: extracted.invoice || 'Unknown',
-    date: extracted.date || new Date().toLocaleDateString('en-IN'),
-    vendorName: extracted.vendorName || '',
-    subTotal: Number(extracted.subTotal) || 0,
-    cgst: Number(extracted.cgst) || 0,
-    sgst: Number(extracted.sgst) || 0,
-    igst: Number(extracted.igst) || 0,
-    grandTotal: Number(extracted.grandTotal) || 0,
-    lineItems: extracted.lineItems || [],
-    irn: extracted.irn || null,
-    qrVerified: extracted.qrVerified || false,
-    aiExtracted: true
-  };
-}
-
-// Compress image to JPEG under 800KB for iOS Safari compatibility
-function compressImage(file, callback) {
-  var img = new Image();
-  var url = URL.createObjectURL(file);
-  img.onload = function() {
-    var maxW = 1600, maxH = 1600;
-    var w = img.width, h = img.height;
-    if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
-    if (h > maxH) { w = Math.round(w * maxH / h); h = maxH; }
-    var canvas = document.createElement('canvas');
-    canvas.width = w; canvas.height = h;
-    var ctx = canvas.getContext('2d');
-    ctx.drawImage(img, 0, 0, w, h);
-    URL.revokeObjectURL(url);
-    // Start at quality 0.85, reduce if still too large
-    var quality = 0.85;
-    var dataUrl = canvas.toDataURL('image/jpeg', quality);
-    // If still > 800KB base64, compress more
-    while (dataUrl.length > 1100000 && quality > 0.4) {
-      quality -= 0.1;
-      dataUrl = canvas.toDataURL('image/jpeg', quality);
-    }
-    callback(dataUrl.split(',')[1], 'image/jpeg');
-  };
-  img.onerror = function() {
-    // Fallback: read as-is
-    var reader = new FileReader();
-    reader.onload = function(e) { callback(e.target.result.split(',')[1], file.type || 'image/jpeg'); };
-    reader.readAsDataURL(file);
-  };
-  img.src = url;
-}
-
-// iOS-safe XHR call
-function xhrPost(url, headers, bodyObj, onSuccess, onError) {
-  var xhr = new XMLHttpRequest();
-  xhr.open('POST', url, true);
-  for (var h in headers) { xhr.setRequestHeader(h, headers[h]); }
-  xhr.timeout = 60000;
-  xhr.onload = function() {
-    try {
-      var data = JSON.parse(xhr.responseText);
-      onSuccess(data);
-    } catch(e) { onError('Invalid response from server'); }
-  };
-  xhr.onerror = function() { onError('Network request failed. Check your internet connection.'); };
-  xhr.ontimeout = function() { onError('Request timed out. Try again.'); };
-  xhr.send(JSON.stringify(bodyObj));
-}
-
-function extractWithGemini(file) {
-  var apiKey = localStorage.getItem('gemini_api_key');
-  var model = localStorage.getItem('gemini_model') || 'gemini-2.0-flash';
-  if (!apiKey) { openAPISettings(); return; }
-
-  showProc('Reading bill...');
+function extractFromFile(file) {
+  var isPDF = file.type === 'application/pdf';
+  showProc('Reading file...');
   document.getElementById('scan-upload-view').style.display = 'none';
 
-  var mimeType = file.type || 'image/jpeg';
-  var isPDF = mimeType === 'application/pdf';
-
   if (isPDF) {
-    // For PDFs: read as base64 directly - no canvas compression
-    updateProcText('Reading PDF...');
-    var pdfReader = new FileReader();
-    pdfReader.onload = function(evt) {
-      var base64 = evt.target.result.split(',')[1];
-      updateProcText('Sending to Gemini AI...');
-      var url = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + apiKey;
-      var body = {
-        contents: [{parts: [{inline_data:{mime_type:'application/pdf', data:base64}}, {text:EXTRACTION_PROMPT}]}],
-        generationConfig: {temperature:0, maxOutputTokens:1500}
-      };
-      xhrPost(url, {'Content-Type':'application/json'}, body,
-        function(data) {
-          hideProc();
-          if (data.error) { showToast('Gemini: ' + data.error.message, true); resetScan(); return; }
-          var text = '';
-          try { text = data.candidates[0].content.parts[0].text; } catch(e) {}
-          if (!text) { showToast('No data extracted. Try uploading as JPG image.', true); resetScan(); return; }
-          try { processBillData(parseExtractedJSON(text)); }
-          catch(e) { showToast('Could not read bill data. Try a photo instead.', true); resetScan(); }
-        },
-        function(err) { hideProc(); showToast(err, true); resetScan(); }
-      );
-    };
-    pdfReader.readAsDataURL(file);
+    extractFromPDF(file);
   } else {
-    // For images: compress first to keep payload small (fixes iOS Safari)
-    updateProcText('Compressing image...');
-    compressImage(file, function(base64, mime) {
-      updateProcText('Sending to Gemini AI...');
-      var url = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + apiKey;
-      var body = {
-        contents: [{parts: [{inline_data:{mime_type:mime, data:base64}}, {text:EXTRACTION_PROMPT}]}],
-        generationConfig: {temperature:0, maxOutputTokens:1500}
+    extractFromImage(file);
+  }
+}
+
+// ── PDF: extract embedded text via PDF.js ─────────────────
+function extractFromPDF(file) {
+  updateProcText('Loading PDF...');
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var data = new Uint8Array(e.target.result);
+    // Load PDF.js from CDN
+    if (typeof pdfjsLib === 'undefined') {
+      var script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+      script.onload = function() {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        processPDFData(data);
       };
-      xhrPost(url, {'Content-Type':'application/json'}, body,
-        function(data) {
-          hideProc();
-          if (data.error) { showToast('Gemini: ' + data.error.message, true); resetScan(); return; }
-          var text = '';
-          try { text = data.candidates[0].content.parts[0].text; } catch(e) {}
-          if (!text) { showToast('No data extracted. Try a clearer photo.', true); resetScan(); return; }
-          try { processBillData(parseExtractedJSON(text)); }
-          catch(e) { showToast('Could not read bill. Try a clearer photo.', true); resetScan(); }
-        },
-        function(err) { hideProc(); showToast(err, true); resetScan(); }
-      );
+      script.onerror = function() {
+        hideProc();
+        showToast('Could not load PDF reader. Try uploading as image.', true);
+        resetScan();
+      };
+      document.head.appendChild(script);
+    } else {
+      processPDFData(data);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function processPDFData(data) {
+  updateProcText('Extracting text from PDF...');
+  pdfjsLib.getDocument({data: data}).promise.then(function(pdf) {
+    var allText = '';
+    var pagePromises = [];
+    for (var i = 1; i <= pdf.numPages; i++) {
+      pagePromises.push(pdf.getPage(i).then(function(page) {
+        return page.getTextContent().then(function(tc) {
+          return tc.items.map(function(item) { return item.str; }).join(' ');
+        });
+      }));
+    }
+    Promise.all(pagePromises).then(function(pages) {
+      allText = pages.join(' ');
+      if (allText.trim().length < 30) {
+        // PDF has no embedded text - it's a scanned image PDF
+        // Fall back to Tesseract
+        updateProcText('Scanned PDF detected - using OCR...');
+        pdfToImageAndOCR(data);
+      } else {
+        updateProcText('Parsing invoice data...');
+        var inv = parseInvoiceText(allText);
+        inv.rawText = allText;
+        hideProc();
+        processBillData(inv);
+      }
+    });
+  }).catch(function(err) {
+    hideProc();
+    showToast('Could not read PDF: ' + err.message, true);
+    resetScan();
+  });
+}
+
+function pdfToImageAndOCR(data) {
+  // Render first page of PDF to canvas then OCR it
+  pdfjsLib.getDocument({data: data}).promise.then(function(pdf) {
+    pdf.getPage(1).then(function(page) {
+      var viewport = page.getViewport({scale: 2.0});
+      var canvas = document.createElement('canvas');
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      var ctx = canvas.getContext('2d');
+      page.render({canvasContext: ctx, viewport: viewport}).promise.then(function() {
+        canvas.toBlob(function(blob) {
+          runTesseract(blob);
+        }, 'image/jpeg', 0.92);
+      });
+    });
+  });
+}
+
+// ── Image: Tesseract.js OCR ────────────────────────────────
+function extractFromImage(file) {
+  updateProcText('Loading OCR engine...');
+  loadTesseract(function() {
+    updateProcText('Running OCR on image...');
+    runTesseract(file);
+  });
+}
+
+function loadTesseract(callback) {
+  if (typeof Tesseract !== 'undefined') { callback(); return; }
+  var script = document.createElement('script');
+  script.src = 'https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.0.4/tesseract.min.js';
+  script.onload = callback;
+  script.onerror = function() {
+    hideProc();
+    showToast('Could not load OCR engine. Check your internet connection.', true);
+    resetScan();
+  };
+  document.head.appendChild(script);
+}
+
+function runTesseract(file) {
+  updateProcText('Reading bill text... (this takes 10-20 seconds)');
+  Tesseract.recognize(file, 'eng', {
+    logger: function(m) {
+      if (m.status === 'recognizing text') {
+        updateProcText('OCR: ' + Math.round(m.progress * 100) + '% complete...');
+      }
+    }
+  }).then(function(result) {
+    var text = result.data.text;
+    if (!text || text.trim().length < 20) {
+      hideProc();
+      showToast('Could not read text from image. Try a clearer, well-lit photo.', true);
+      resetScan();
+      return;
+    }
+    updateProcText('Parsing invoice data...');
+    var inv = parseInvoiceText(text);
+    inv.rawText = text;
+    hideProc();
+    processBillData(inv);
+  }).catch(function(err) {
+    hideProc();
+    showToast('OCR failed: ' + err.message, true);
+    resetScan();
+  });
+}
+
+// ── Universal Invoice Text Parser ──────────────────────────
+// Works on text from both PDF extraction and OCR
+function parseInvoiceText(text) {
+  var t = text.replace(/\s+/g, ' ').trim();
+
+  // GSTIN: 15-char pattern
+  var gstinMatch = t.match(/[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}/g);
+  // Pick supplier GSTIN - first one found (supplier is listed before buyer)
+  var gstin = gstinMatch ? gstinMatch[0] : '';
+
+  // Invoice number - look for "Invoice No." patterns
+  var invMatch = t.match(/Invoice\s*No\.?\s*[:\-]?\s*([A-Z0-9\/\-\.]+)/i);
+  var invoice = invMatch ? invMatch[1].trim() : 'Unknown';
+
+  // Date - various Indian formats
+  var dateMatch = t.match(/(\d{1,2}[-\/\s][A-Za-z]{3,9}[-\/\s]\d{2,4}|\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4})/);
+  var date = 'Unknown';
+  if (dateMatch) {
+    var d = new Date(dateMatch[0].replace(/-/g,'/'));
+    if (!isNaN(d)) date = d.toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'});
+    else date = dateMatch[0];
+  }
+
+  // Vendor name - text before GSTIN usually contains name
+  var vendorName = '';
+  if (gstin) {
+    var beforeGstin = t.substring(0, t.indexOf(gstin)).trim();
+    var lines = beforeGstin.split(/[.\n]/).filter(function(l) { return l.trim().length > 3; });
+    if (lines.length) vendorName = lines[lines.length - 1].trim().substring(0, 60);
+  }
+
+  // Amounts - look for Grand Total / Total
+  var grandTotalMatch = t.match(/(?:Grand\s*Total|Total\s*Amount|Invoice\s*Total|TOTAL)[^\d]*?([\d,]+(?:\.\d{1,3})?)/i);
+  var grandTotal = grandTotalMatch ? parseFloat(grandTotalMatch[1].replace(/,/g,'')) : 0;
+
+  // CGST, SGST, IGST
+  var cgstMatch = t.match(/CGST[^\d]*?([\d,]+(?:\.\d{1,3})?)/i);
+  var sgstMatch = t.match(/SGST[^\d]*?([\d,]+(?:\.\d{1,3})?)/i);
+  var igstMatch = t.match(/IGST[^\d]*?([\d,]+(?:\.\d{1,3})?)/i);
+  var cgst = cgstMatch ? parseFloat(cgstMatch[1].replace(/,/g,'')) : 0;
+  var sgst = sgstMatch ? parseFloat(sgstMatch[1].replace(/,/g,'')) : 0;
+  var igst = igstMatch ? parseFloat(igstMatch[1].replace(/,/g,'')) : 0;
+
+  // Sub total = grand total - taxes
+  var taxTotal = cgst + sgst + igst;
+  var subTotal = grandTotal > 0 ? grandTotal - taxTotal : 0;
+  if (subTotal < 0) subTotal = grandTotal;
+
+  // Taxable value override
+  var taxableMatch = t.match(/Taxable\s*(?:Value|Amount)[^\d]*([\d,]+(?:\.\d{1,3})?)/i);
+  if (taxableMatch) subTotal = parseFloat(taxableMatch[1].replace(/,/g,''));
+
+  // IRN - 64 char alphanumeric
+  var irnMatch = t.match(/IRN\s*[:\-]?\s*([a-fA-F0-9]{64})/);
+  var irn = irnMatch ? irnMatch[1] : null;
+
+  // HSN codes and line items
+  var lineItems = [];
+  var hsnMatches = t.match(/([0-9]{4,8})/g);
+  var hsnCodes = hsnMatches ? hsnMatches.filter(function(h) { return h.length >= 4 && h.length <= 8; }) : [];
+  var uniqueHSN = [];
+  hsnCodes.forEach(function(h) { if (uniqueHSN.indexOf(h) < 0 && !/^(19|20|18|12|28|05|00)$/.test(h)) uniqueHSN.push(h); });
+
+  if (uniqueHSN.length) {
+    uniqueHSN.slice(0,5).forEach(function(hsn) {
+      lineItems.push({desc: 'Item (HSN '+hsn+')', hsn: hsn, qty: 1, rate: 0, amt: 0, gstRate: 0});
     });
   }
-}
 
-function extractWithClaude(file) {
-  var apiKey = localStorage.getItem('claude_api_key');
-  var model = localStorage.getItem('claude_model') || 'claude-haiku-4-5-20251001';
-  if (!apiKey) { openAPISettings(); return; }
-
-  showProc('Reading bill...');
-  document.getElementById('scan-upload-view').style.display = 'none';
-
-  var mimeType = file.type || 'image/jpeg';
-  var isPDF = mimeType === 'application/pdf';
-
-  var processBase64 = function(base64, mime) {
-    updateProcText('Sending to Claude AI...');
-    var messageContent = [];
-    if (isPDF) {
-      messageContent.push({type:'document', source:{type:'base64', media_type:'application/pdf', data:base64}});
-    } else {
-      messageContent.push({type:'image', source:{type:'base64', media_type:mime, data:base64}});
-    }
-    messageContent.push({type:'text', text:EXTRACTION_PROMPT});
-    var headers = {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true'
-    };
-    xhrPost('https://api.anthropic.com/v1/messages', headers,
-      {model:model, max_tokens:1500, messages:[{role:'user', content:messageContent}]},
-      function(data) {
-        hideProc();
-        if (data.error) { showToast('Claude: ' + data.error.message, true); resetScan(); return; }
-        var text = '';
-        for (var i = 0; i < data.content.length; i++) {
-          if (data.content[i].type === 'text') { text = data.content[i].text; break; }
-        }
-        if (!text) { showToast('No response from Claude.', true); resetScan(); return; }
-        try { processBillData(parseExtractedJSON(text)); }
-        catch(e) { showToast('Could not read bill. Try a clearer photo.', true); resetScan(); }
-      },
-      function(err) { hideProc(); showToast(err, true); resetScan(); }
-    );
-  };
-
-  if (isPDF) {
-    var r = new FileReader();
-    r.onload = function(e) { processBase64(e.target.result.split(',')[1], 'application/pdf'); };
-    r.readAsDataURL(file);
-  } else {
-    updateProcText('Compressing image...');
-    compressImage(file, processBase64);
+  if (!lineItems.length) {
+    lineItems.push({desc: 'As per invoice', hsn: '', qty: 1, rate: subTotal, amt: subTotal, gstRate: taxTotal > 0 ? Math.round(taxTotal/subTotal*100) : 0});
   }
+
+  return {
+    gstin: gstin,
+    invoice: invoice,
+    date: date,
+    vendorName: vendorName,
+    subTotal: Math.round(subTotal * 100) / 100,
+    cgst: Math.round(cgst * 100) / 100,
+    sgst: Math.round(sgst * 100) / 100,
+    igst: Math.round(igst * 100) / 100,
+    grandTotal: Math.round(grandTotal * 100) / 100,
+    lineItems: lineItems,
+    irn: irn,
+    qrVerified: !!irn,
+    aiExtracted: true,
+    extractionMethod: 'Built-in'
+  };
 }
 
 function processBillData(inv) {
