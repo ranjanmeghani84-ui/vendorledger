@@ -1,0 +1,1825 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VendorLedger — Master + Bill Scanner</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0d0f0e;--surface:#151816;--surface2:#1c1f1d;--surface3:#232623;
+  --border:#2a2e2b;--border2:#333835;--text:#e8ede9;--text2:#8a9489;--text3:#5a6359;
+  --accent:#4ade80;--accent-dim:#1a3a26;--accent-glow:#4ade8020;
+  --gold:#d4a843;--gold-dim:#2a2010;--red:#f87171;--red-dim:#2a1515;
+  --blue:#60a5fa;--blue-dim:#151f30;--amber:#fbbf24;--radius:8px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+.layout{display:flex;min-height:100vh;}
+.sidebar{width:240px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;position:sticky;top:0;height:100vh;}
+.sidebar-logo{padding:24px 20px 20px;border-bottom:1px solid var(--border);}
+.logo-mark{font-family:'DM Serif Display',serif;font-size:20px;color:var(--text);line-height:1;margin-bottom:4px;}
+.logo-mark span{color:var(--accent);}
+.logo-sub{font-family:'DM Mono',monospace;font-size:9px;color:var(--text3);letter-spacing:2px;text-transform:uppercase;}
+.sidebar-nav{padding:16px 12px;flex:1;display:flex;flex-direction:column;gap:4px;}
+.nav-section{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--text3);padding:12px 8px 6px;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:6px;cursor:pointer;transition:all 0.15s;font-size:14px;font-weight:500;color:var(--text2);border:1px solid transparent;}
+.nav-item:hover{background:var(--surface2);color:var(--text);}
+.nav-item.active{background:var(--accent-dim);color:var(--accent);border-color:#4ade8030;}
+.nav-icon{font-size:16px;width:20px;text-align:center;}
+.nav-badge{margin-left:auto;background:var(--accent-dim);color:var(--accent);font-family:'DM Mono',monospace;font-size:10px;padding:2px 7px;border-radius:20px;}
+.sidebar-footer{padding:16px;border-top:1px solid var(--border);font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);line-height:1.8;}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:16px 28px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.page-title{font-family:'DM Serif Display',serif;font-size:22px;}
+.page-subtitle{font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;}
+.topbar-actions{display:flex;gap:10px;align-items:center;}
+.panel{display:none;flex:1;overflow-y:auto;padding:28px;}
+.panel.active{display:block;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+.card-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.card-title{font-size:13px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:8px;}
+.card-body{padding:20px;}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:6px;font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;border:none;cursor:pointer;transition:all 0.15s;white-space:nowrap;}
+.btn-primary{background:var(--accent);color:#0a1a0f;}
+.btn-primary:hover{background:#6aef98;}
+.btn-secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border2);}
+.btn-secondary:hover{background:var(--surface3);}
+.btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--border);}
+.btn-ghost:hover{background:var(--surface2);color:var(--text);}
+.btn-danger{background:var(--red-dim);color:var(--red);border:1px solid #f8717130;}
+.btn-sm{padding:6px 12px;font-size:12px;}
+.btn-lg{padding:12px 24px;font-size:15px;}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:600;font-family:'DM Mono',monospace;}
+.badge-green{background:var(--accent-dim);color:var(--accent);border:1px solid #4ade8025;}
+.badge-gold{background:var(--gold-dim);color:var(--gold);border:1px solid #d4a84325;}
+.badge-red{background:var(--red-dim);color:var(--red);border:1px solid #f8717125;}
+.badge-blue{background:var(--blue-dim);color:var(--blue);border:1px solid #60a5fa25;}
+.badge-amber{background:#2a2010;color:var(--amber);border:1px solid #fbbf2425;}
+.badge-muted{background:var(--surface3);color:var(--text3);border:1px solid var(--border);}
+.form-grid{display:grid;gap:16px;}
+.form-grid-2{grid-template-columns:1fr 1fr;}
+.form-grid-3{grid-template-columns:1fr 1fr 1fr;}
+.form-group{display:flex;flex-direction:column;gap:6px;}
+.form-label{font-size:11px;font-weight:600;font-family:'DM Mono',monospace;color:var(--text3);letter-spacing:0.5px;text-transform:uppercase;display:flex;align-items:center;gap:6px;}
+.form-label .required{color:var(--red);}
+.form-input,.form-select{background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:10px 14px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;transition:all 0.15s;outline:none;width:100%;}
+.form-input:focus,.form-select:focus{border-color:#4ade8060;background:var(--surface3);box-shadow:0 0 0 3px var(--accent-glow);}
+.form-input::placeholder{color:var(--text3);}
+.form-select{cursor:pointer;}
+.form-select option{background:var(--surface2);}
+.form-hint{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;}
+.form-hint.success{color:var(--accent);}
+.form-hint.warning{color:var(--amber);}
+.form-hint.error{color:var(--red);}
+.section-divider{display:flex;align-items:center;gap:12px;margin:24px 0 16px;}
+.section-divider-line{flex:1;height:1px;background:var(--border);}
+.section-divider-label{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text3);white-space:nowrap;display:flex;align-items:center;gap:6px;}
+.vendor-table{width:100%;border-collapse:collapse;}
+.vendor-table th{background:var(--surface2);padding:10px 16px;text-align:left;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);font-weight:500;border-bottom:1px solid var(--border);}
+.vendor-table td{padding:14px 16px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle;}
+.vendor-table tr:last-child td{border-bottom:none;}
+.vendor-table tr:hover td{background:var(--surface2);cursor:pointer;}
+.vendor-avatar{width:36px;height:36px;border-radius:8px;background:var(--accent-dim);border:1px solid #4ade8030;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:var(--accent);flex-shrink:0;font-family:'DM Mono',monospace;}
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px;position:relative;overflow:hidden;}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
+.stat-card.green::before{background:var(--accent);}
+.stat-card.gold::before{background:var(--gold);}
+.stat-card.blue::before{background:var(--blue);}
+.stat-card.red::before{background:var(--red);}
+.stat-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;}
+.stat-value{font-family:'DM Serif Display',serif;font-size:28px;color:var(--text);line-height:1;}
+.stat-sub{font-size:11px;color:var(--text3);margin-top:6px;}
+.proc-overlay{display:none;position:fixed;inset:0;background:rgba(13,15,14,0.85);backdrop-filter:blur(4px);z-index:1000;align-items:center;justify-content:center;flex-direction:column;gap:20px;}
+.proc-overlay.show{display:flex;}
+.proc-spinner{width:56px;height:56px;border:3px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.proc-text{font-family:'DM Mono',monospace;font-size:14px;color:var(--accent);text-align:center;}
+.match-banner{background:var(--accent-dim);border:1px solid #4ade8030;border-radius:var(--radius);padding:16px 20px;display:flex;align-items:center;gap:16px;margin-bottom:24px;animation:slideIn 0.3s ease;}
+@keyframes slideIn{from{opacity:0;transform:translateY(-8px);}to{opacity:1;transform:translateY(0);}}
+.comp-card{background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:14px;position:relative;}
+.comp-card.tds{border-top:2px solid var(--gold);}
+.comp-card.gst{border-top:2px solid var(--accent);}
+.comp-card.rcm{border-top:2px solid var(--blue);}
+.comp-card.einv{border-top:2px solid var(--blue);}
+.comp-card.einv-na{border-top:2px solid var(--border2);}
+.comp-label{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--text3);margin-bottom:6px;}
+.comp-value{font-size:16px;font-weight:700;color:var(--text);margin-bottom:4px;}
+.comp-detail{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;line-height:1.5;}
+.comp-amount{margin-top:8px;padding-top:8px;border-top:1px solid var(--border);display:flex;justify-content:space-between;}
+.comp-amount-label{font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;}
+.comp-amount-val{font-size:13px;font-weight:700;color:var(--gold);font-family:'DM Mono',monospace;}
+.journal-preview{background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);overflow:hidden;}
+.journal-preview table{width:100%;border-collapse:collapse;}
+.journal-preview th{background:var(--surface3);padding:10px 16px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);text-align:left;}
+.journal-preview td{padding:12px 16px;border-top:1px solid var(--border);font-size:13px;}
+.journal-preview .dr{color:var(--accent);font-weight:600;font-family:'DM Mono',monospace;text-align:right;}
+.journal-preview .cr{color:var(--red);font-weight:600;font-family:'DM Mono',monospace;text-align:right;}
+.journal-preview .ledger-name{font-weight:600;}
+.journal-preview .ledger-group{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;}
+.journal-preview .totals-row td{background:var(--surface3);font-weight:700;border-top:2px solid var(--border2);}
+.modal-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);z-index:500;align-items:center;justify-content:center;}
+.modal-backdrop.show{display:flex;}
+.modal{background:var(--surface);border:1px solid var(--border2);border-radius:12px;width:760px;max-width:95vw;max-height:90vh;overflow-y:auto;animation:modalIn 0.25s ease;}
+@keyframes modalIn{from{opacity:0;transform:scale(0.96) translateY(8px);}to{opacity:1;transform:scale(1) translateY(0);}}
+.modal-header{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--surface);z-index:1;}
+.modal-title{font-family:'DM Serif Display',serif;font-size:20px;}
+.modal-close{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:6px 10px;cursor:pointer;color:var(--text2);font-size:16px;transition:all 0.15s;}
+.modal-close:hover{background:var(--surface3);}
+.modal-body{padding:24px;}
+.modal-footer{padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;}
+.auto-fill-row{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--gold-dim);border:1px solid #d4a84320;border-radius:6px;margin-top:12px;}
+.auto-fill-row span{font-family:'DM Mono',monospace;font-size:11px;color:var(--gold);}
+.drop-zone{border:2px dashed var(--border2);border-radius:var(--radius);padding:48px 24px;text-align:center;cursor:pointer;transition:all 0.2s;background:var(--surface2);}
+.drop-zone:hover{border-color:#4ade8060;background:var(--accent-dim);}
+.drop-zone-title{font-size:16px;font-weight:600;color:var(--text);margin-bottom:6px;}
+.drop-zone-sub{font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);}
+.msme-warning{background:#2a2010;border:1px solid #fbbf2430;border-radius:6px;padding:10px 14px;display:flex;align-items:center;gap:10px;font-size:12px;color:var(--amber);font-family:'DM Mono',monospace;margin-top:12px;}
+.irn-warning{background:var(--red-dim);border:1px solid #f8717140;border-left:3px solid var(--red);border-radius:6px;padding:12px 16px;margin-bottom:16px;display:flex;gap:10px;align-items:flex-start;}
+.empty-state{text-align:center;padding:60px 20px;color:var(--text3);}
+.empty-icon{font-size:48px;margin-bottom:16px;opacity:0.4;}
+.empty-title{font-family:'DM Serif Display',serif;font-size:20px;color:var(--text2);margin-bottom:8px;}
+.empty-text{font-family:'DM Mono',monospace;font-size:12px;line-height:1.8;}
+.search-bar{display:flex;align-items:center;gap:10px;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:8px 14px;}
+.search-bar input{background:none;border:none;outline:none;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;flex:1;}
+.search-bar input::placeholder{color:var(--text3);}
+.toast{position:fixed;bottom:24px;right:24px;background:var(--surface2);border:1px solid var(--border2);border-left:3px solid var(--accent);color:var(--text);padding:12px 18px;border-radius:var(--radius);font-size:13px;font-family:'DM Mono',monospace;display:flex;align-items:center;gap:10px;transform:translateY(80px);opacity:0;transition:all 0.3s;z-index:2000;max-width:340px;box-shadow:0 8px 32px rgba(0,0,0,0.4);}
+.toast.show{transform:translateY(0);opacity:1;}
+.toast.error{border-left-color:var(--red);}
+::-webkit-scrollbar{width:6px;height:6px;}
+::-webkit-scrollbar-track{background:var(--surface);}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+.meta-grid{display:grid;grid-template-columns:repeat(4,1fr);}
+.meta-cell{padding:14px 20px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);}
+.meta-cell:last-child{border-right:none;}
+.meta-label{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--text3);margin-bottom:4px;}
+.meta-value{font-size:13px;font-weight:600;}
+.vendor-meta-grid{display:grid;grid-template-columns:repeat(3,1fr);}
+.vendor-meta-cell{padding:12px 20px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);}
+.comp-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;}
+.section-heading{margin-bottom:8px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text3);display:flex;align-items:center;gap:12px;}
+.section-heading-line{flex:1;height:1px;background:var(--border);}
+.demo-cards{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.demo-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;cursor:pointer;transition:border-color 0.15s;}
+.demo-card:hover{border-color:#4ade8050;}
+</style>
+</head>
+<body>
+<div class="layout">
+
+<!-- Sidebar -->
+<div class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark">Vendor<span>Ledger</span></div>
+    <div class="logo-sub">PDF to Tally System</div>
+  </div>
+  <div class="sidebar-nav">
+    <div class="nav-section">Main</div>
+    <div class="nav-item active" id="nav-dashboard" onclick="showPanel('dashboard')">
+      <span class="nav-icon">&#9672;</span> Dashboard
+    </div>
+    <div class="nav-item" id="nav-vendors" onclick="showPanel('vendors')">
+      <span class="nav-icon">&#8862;</span> Vendor Master
+      <span class="nav-badge" id="vendor-count-badge">0</span>
+    </div>
+    <div class="nav-item" id="nav-scan" onclick="showPanel('scan')">
+      <span class="nav-icon">&#8982;</span> Scan Bill
+    </div>
+    <div class="nav-section">Records</div>
+    <div class="nav-item" id="nav-entries" onclick="showPanel('entries')">
+      <span class="nav-icon">&#8801;</span> Journal Entries
+      <span class="nav-badge" id="entry-count-badge">0</span>
+    </div>
+    <div class="nav-item" id="nav-tally" onclick="showPanel('tally')">
+      <span class="nav-icon">&#8677;</span> Tally Export
+    </div>
+  </div>
+  <div class="sidebar-footer">
+    FY 2024-25 &nbsp;|&nbsp; Tally Prime Ready<br>
+    <span style="color:var(--accent)">&#9679; System Active</span><br>
+    <span id="sidebar-ai-status" style="cursor:pointer;text-decoration:underline;" onclick="openAPISettings()">AI: Not configured</span>
+  </div>
+</div>
+
+<!-- Main -->
+<div class="main">
+  <div class="topbar">
+    <div>
+      <div class="page-title" id="page-title">Dashboard</div>
+      <div class="page-subtitle" id="page-subtitle">Overview - FY 2024-25</div>
+    </div>
+    <div class="topbar-actions">
+      <button class="btn btn-secondary btn-sm" onclick="showPanel('vendors'); openAddVendor()">+ Add Vendor</button>
+      <button class="btn btn-ghost btn-sm" id="ai-settings-btn" onclick="openAPISettings()" title="AI Settings">&#9881;</button>
+      <button class="btn btn-primary btn-sm" onclick="showPanel('scan')">Scan Bill</button>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div class="panel active" id="panel-dashboard">
+    <div class="stats-row">
+      <div class="stat-card green"><div class="stat-label">Total Vendors</div><div class="stat-value" id="stat-vendors">0</div><div class="stat-sub">in master</div></div>
+      <div class="stat-card gold"><div class="stat-label">Bills Processed</div><div class="stat-value" id="stat-bills">0</div><div class="stat-sub">this session</div></div>
+      <div class="stat-card blue"><div class="stat-label">TDS Payable</div><div class="stat-value" id="stat-tds">&#8377;0</div><div class="stat-sub">to deposit</div></div>
+      <div class="stat-card red"><div class="stat-label">GST ITC</div><div class="stat-value" id="stat-gst">&#8377;0</div><div class="stat-sub">input credit</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+      <div class="card">
+        <div class="card-header"><div class="card-title">&#9889; Quick Start</div></div>
+        <div class="card-body" style="display:flex;flex-direction:column;gap:12px;">
+          <p style="font-size:13px;color:var(--text2);line-height:1.7;">Build your <strong style="color:var(--text)">Vendor Master</strong> first. Every bill from a known vendor auto-generates a compliant journal entry instantly.</p>
+          <div style="background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:14px;display:flex;flex-direction:column;gap:8px;">
+            <div style="display:flex;gap:10px;"><span style="color:var(--accent);font-family:'DM Mono',monospace;font-size:12px;min-width:20px;">01</span><span style="font-size:13px;color:var(--text2);">Add vendor GSTIN &#8594; PAN + legal name auto-extracted</span></div>
+            <div style="display:flex;gap:10px;"><span style="color:var(--accent);font-family:'DM Mono',monospace;font-size:12px;min-width:20px;">02</span><span style="font-size:13px;color:var(--text2);">Set TDS section, MSME, e-Invoice, ledger, payment terms</span></div>
+            <div style="display:flex;gap:10px;"><span style="color:var(--accent);font-family:'DM Mono',monospace;font-size:12px;min-width:20px;">03</span><span style="font-size:13px;color:var(--text2);">Scan bill &#8594; vendor matched &#8594; journal entry auto-generated</span></div>
+            <div style="display:flex;gap:10px;"><span style="color:var(--accent);font-family:'DM Mono',monospace;font-size:12px;min-width:20px;">04</span><span style="font-size:13px;color:var(--text2);">Review, edit if needed &#8594; export Tally XML</span></div>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-primary" onclick="showPanel('vendors'); openAddVendor()">Add First Vendor</button>
+            <button class="btn btn-secondary" onclick="loadDemoVendors()">Load Demo Data</button>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">&#128203; Architecture</div></div>
+        <div class="card-body">
+          <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);line-height:2.2;">
+            <div style="color:var(--gold)">GSTIN Entered</div>
+            <div style="padding-left:16px;">&#8595; Auto-extract PAN (char 3-12)</div>
+            <div style="padding-left:16px;">&#8595; Entity type from PAN 4th char</div>
+            <div style="color:var(--accent)">Vendor Master Created</div>
+            <div style="padding-left:16px;">&#8594; TDS Section + Rate + Threshold</div>
+            <div style="padding-left:16px;">&#8594; MSME Flag + e-Invoice flag</div>
+            <div style="padding-left:16px;">&#8594; Expense Ledger Mapping</div>
+            <div style="padding-left:16px;">&#8594; Credit Limit + Payment Terms</div>
+            <div style="color:var(--blue)">Bill Scanned</div>
+            <div style="padding-left:16px;">&#8595; GSTIN matched in master</div>
+            <div style="padding-left:16px;">&#8595; All rules auto-applied</div>
+            <div style="color:var(--red)">Journal Entry + Tally XML &#8594;</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:20px;">
+      <div class="card-header"><div class="card-title">&#128196; Recent Entries</div><button class="btn btn-ghost btn-sm" onclick="showPanel('entries')">View All</button></div>
+      <div id="recent-entries-body"><div class="empty-state" style="padding:40px 20px;"><div class="empty-icon">&#128203;</div><div class="empty-title">No entries yet</div><div class="empty-text">Scan your first bill</div></div></div>
+    </div>
+  </div>
+
+  <!-- VENDOR MASTER -->
+  <div class="panel" id="panel-vendors">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+      <div class="search-bar" style="flex:1;max-width:360px;">
+        <span style="color:var(--text3)">&#128269;</span>
+        <input type="text" placeholder="Search vendors..." oninput="filterVendors(this.value)">
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button class="btn btn-secondary btn-sm" onclick="loadDemoVendors()">Load Demo</button>
+        <button class="btn btn-primary" onclick="openAddVendor()">+ Add Vendor</button>
+      </div>
+    </div>
+    <div class="card">
+      <div id="vendor-empty" class="empty-state"><div class="empty-icon">&#127970;</div><div class="empty-title">No vendors yet</div><div class="empty-text">Add vendors to build your master database</div></div>
+      <table class="vendor-table" id="vendor-table" style="display:none;">
+        <thead><tr>
+          <th>Vendor</th><th>PAN / Type</th><th>TDS</th><th>MSME</th><th>e-Invoice</th><th>Expense Ledger</th><th>Credit Terms</th><th>Actions</th>
+        </tr></thead>
+        <tbody id="vendor-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- SCAN BILL -->
+  <div class="panel" id="panel-scan">
+    <div id="scan-upload-view">
+      <div style="max-width:600px;margin:0 auto;">
+        <div class="drop-zone" onclick="document.getElementById('scan-file-input').click()">
+          <div style="font-size:40px;margin-bottom:12px;opacity:0.6;">&#128196;</div>
+          <div class="drop-zone-title">Upload Bill / Invoice PDF</div>
+          <div class="drop-zone-sub" style="margin-top:8px;">Real extraction via Claude AI (set API key) or try demo bills below<br>Supports PDF, JPG, PNG scans of invoices</div>
+          <input type="file" id="scan-file-input" style="display:none;" accept=".pdf,image/*" onchange="handleBillUpload(event)">
+        </div>
+        <div style="text-align:center;margin:20px 0;color:var(--text3);font-size:12px;font-family:'DM Mono',monospace;">-- or try a demo bill --</div>
+        <div class="demo-cards">
+          <div class="demo-card" onclick="runDemoScan(0)">
+            <div style="font-size:13px;font-weight:700;margin-bottom:4px;">&#128424; Raju Printers Invoice</div>
+            <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">&#8377;19,172 - GST 12/18% - TDS 194C - MSME</div>
+          </div>
+          <div class="demo-card" onclick="runDemoScan(1)">
+            <div style="font-size:13px;font-weight:700;margin-bottom:4px;">&#9729; CloudHost Technologies</div>
+            <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">&#8377;64,428 - GST 18% - TDS 194J - e-Invoice</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="scan-result-view" style="display:none;max-width:900px;"></div>
+    <div id="scan-quickadd-view" style="display:none;max-width:700px;"></div>
+  </div>
+
+  <!-- JOURNAL ENTRIES -->
+  <div class="panel" id="panel-entries">
+    <div id="entries-empty" class="empty-state"><div class="empty-icon">&#128219;</div><div class="empty-title">No journal entries yet</div><div class="empty-text">Scan bills to generate entries</div></div>
+    <div id="entries-list" style="display:none;flex-direction:column;gap:16px;"></div>
+  </div>
+
+  <!-- TALLY EXPORT -->
+  <div class="panel" id="panel-tally">
+    <div id="tally-empty" class="empty-state"><div class="empty-icon">&#8677;</div><div class="empty-title">No entries to export</div><div class="empty-text">Post journal entries first</div></div>
+    <div id="tally-content" style="display:none;">
+      <div style="display:flex;gap:12px;margin-bottom:20px;">
+        <button class="btn btn-primary btn-lg" onclick="downloadAllXML()">Download All Tally XML</button>
+        <button class="btn btn-secondary btn-lg" onclick="downloadAllCSV()">Export All CSV</button>
+      </div>
+      <div id="tally-list" style="display:flex;flex-direction:column;gap:12px;"></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ADD VENDOR MODAL -->
+<div class="modal-backdrop" id="add-vendor-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="vendor-modal-title">Add New Vendor</div>
+      <button class="modal-close" onclick="closeModal('add-vendor-modal')">&#10005;</button>
+    </div>
+    <div class="modal-body">
+
+      <div class="section-divider"><div class="section-divider-line"></div><div class="section-divider-label">&#128269; Step 1 - Identity from GSTIN</div><div class="section-divider-line"></div></div>
+      <div class="form-grid form-grid-2">
+        <div class="form-group">
+          <label class="form-label">GSTIN <span class="required">*</span></label>
+          <div style="display:flex;gap:8px;">
+            <input type="text" class="form-input" id="v-gstin" placeholder="27AAACR3592Q1ZP" maxlength="15" oninput="this.value=this.value.toUpperCase(); onGSTINChange(this.value)">
+            <button class="btn btn-secondary btn-sm" onclick="fetchGSTIN()">Auto-Fill</button>
+          </div>
+          <span class="form-hint" id="gstin-hint">Enter 15-digit GSTIN</span>
+        </div>
+        <div class="form-group">
+          <label class="form-label">PAN <span style="color:var(--gold);font-size:10px;">(auto-extracted)</span></label>
+          <input type="text" class="form-input" id="v-pan" placeholder="Auto-filled" readonly>
+          <span class="form-hint" id="pan-hint">Characters 3-12 of GSTIN</span>
+        </div>
+      </div>
+      <div class="form-grid form-grid-2" style="margin-top:12px;">
+        <div class="form-group">
+          <label class="form-label">Legal Name <span style="color:var(--gold);font-size:10px;">(auto-filled)</span></label>
+          <input type="text" class="form-input" id="v-name" placeholder="Auto-filled from GST portal">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Entity Type <span style="color:var(--gold);font-size:10px;">(from PAN)</span></label>
+          <select class="form-select" id="v-entity">
+            <option value="">-- Select --</option>
+            <option value="Private Limited">Private Limited</option>
+            <option value="Public Limited">Public Limited</option>
+            <option value="LLP">LLP</option>
+            <option value="Partnership">Partnership Firm</option>
+            <option value="Proprietorship">Proprietorship</option>
+            <option value="Individual">Individual</option>
+            <option value="Trust">Trust / Society</option>
+          </select>
+        </div>
+      </div>
+      <div id="auto-fill-indicator" style="display:none;" class="auto-fill-row">
+        <span>&#9889;</span><span id="auto-fill-text">Details auto-populated from GSTIN</span>
+      </div>
+
+      <div class="section-divider"><div class="section-divider-line"></div><div class="section-divider-label">&#9878; Step 2 - TDS and Compliance</div><div class="section-divider-line"></div></div>
+      <div class="form-grid form-grid-3">
+        <div class="form-group">
+          <label class="form-label">TDS Applicable?</label>
+          <select class="form-select" id="v-tds-applicable" onchange="toggleTDS(this.value)">
+            <option value="yes">Yes</option><option value="no">No</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">TDS Section</label>
+          <select class="form-select" id="v-tds-section" onchange="autoTDSRate(this.value)">
+            <option value="">-- Select --</option>
+            <option value="194C">194C - Contractor</option>
+            <option value="194J">194J - Professional</option>
+            <option value="194I">194I - Rent</option>
+            <option value="194A">194A - Interest</option>
+            <option value="194H">194H - Commission</option>
+            <option value="194M">194M - Contractor (Ind/HUF)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">TDS Rate %</label>
+          <input type="number" class="form-input" id="v-tds-rate" placeholder="e.g. 10" step="0.01">
+          <span class="form-hint" id="tds-rate-hint"></span>
+        </div>
+      </div>
+      <div class="form-grid form-grid-2" style="margin-top:12px;">
+        <div class="form-group">
+          <label class="form-label">TDS Threshold (&#8377;)</label>
+          <input type="number" class="form-input" id="v-tds-threshold" placeholder="e.g. 30000">
+        </div>
+        <div class="form-group">
+          <label class="form-label">RCM Applicable?</label>
+          <select class="form-select" id="v-rcm">
+            <option value="no">No</option><option value="yes">Yes - Pay GST to Govt</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="section-divider"><div class="section-divider-line"></div><div class="section-divider-label">&#127981; Step 3 - MSME Registration</div><div class="section-divider-line"></div></div>
+      <div class="form-grid form-grid-3">
+        <div class="form-group">
+          <label class="form-label">MSME Registered?</label>
+          <select class="form-select" id="v-msme" onchange="toggleMSME(this.value)">
+            <option value="no">No</option><option value="yes">Yes</option>
+          </select>
+        </div>
+        <div class="form-group" id="msme-cat-group" style="display:none;">
+          <label class="form-label">MSME Category</label>
+          <select class="form-select" id="v-msme-cat">
+            <option value="Micro">Micro</option><option value="Small">Small</option><option value="Medium">Medium</option>
+          </select>
+        </div>
+        <div class="form-group" id="msme-udyam-group" style="display:none;">
+          <label class="form-label">Udyam No.</label>
+          <input type="text" class="form-input" id="v-udyam" placeholder="UDYAM-XX-00-0000000">
+        </div>
+      </div>
+
+      <div class="section-divider"><div class="section-divider-line"></div><div class="section-divider-label">&#129534; Step 4 - e-Invoice Compliance</div><div class="section-divider-line"></div></div>
+      <div class="form-grid form-grid-3">
+        <div class="form-group">
+          <label class="form-label">e-Invoice Applicable?</label>
+          <select class="form-select" id="v-einvoice" onchange="toggleEInvoice(this.value)">
+            <option value="no">No</option><option value="yes">Yes</option>
+          </select>
+          <span class="form-hint" id="einvoice-hint">Mandatory if turnover &gt; &#8377;5 Cr</span>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Turnover Slab</label>
+          <select class="form-select" id="v-einvoice-slab">
+            <option value="">-- Not Specified --</option>
+            <option value="5-10">&#8377;5 Cr - &#8377;10 Cr</option>
+            <option value="10-20">&#8377;10 Cr - &#8377;20 Cr</option>
+            <option value="20-50">&#8377;20 Cr - &#8377;50 Cr</option>
+            <option value="50-100">&#8377;50 Cr - &#8377;100 Cr</option>
+            <option value="100+">Above &#8377;100 Cr</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">QR Verification</label>
+          <select class="form-select" id="v-einvoice-qr">
+            <option value="required">Required - flag if missing</option>
+            <option value="optional">Optional</option>
+          </select>
+        </div>
+      </div>
+      <div id="einvoice-info-box" style="display:none;margin-top:10px;padding:10px 14px;background:#0d1a2a;border:1px solid #60a5fa30;border-left:3px solid #60a5fa;border-radius:6px;">
+        <div style="font-family:'DM Mono',monospace;font-size:11px;color:#60a5fa;margin-bottom:4px;">&#129534; IRN Enforcement Active</div>
+        <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);line-height:1.8;">Every bill must carry a valid IRN (64-char hash from IRP portal). Missing IRN on scan will trigger a compliance warning.</div>
+      </div>
+
+      <div class="section-divider"><div class="section-divider-line"></div><div class="section-divider-label">&#128210; Step 5 - Expense Ledger Mapping</div><div class="section-divider-line"></div></div>
+      <div class="form-grid form-grid-2">
+        <div class="form-group">
+          <label class="form-label">Expense Ledger Name <span class="required">*</span></label>
+          <input type="text" class="form-input" id="v-ledger" placeholder="e.g. Office Stationery and Printing">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Under Group</label>
+          <select class="form-select" id="v-ledger-group">
+            <option value="Indirect Expenses">Indirect Expenses</option>
+            <option value="Direct Expenses">Direct Expenses</option>
+            <option value="Purchase Accounts">Purchase Accounts</option>
+            <option value="Fixed Assets">Fixed Assets</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="section-divider"><div class="section-divider-line"></div><div class="section-divider-label">&#128179; Step 6 - Credit and Payment Terms</div><div class="section-divider-line"></div></div>
+      <div class="form-grid form-grid-3">
+        <div class="form-group">
+          <label class="form-label">Credit Limit (&#8377;)</label>
+          <input type="number" class="form-input" id="v-credit-limit" placeholder="e.g. 500000">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Payment Terms (Days)</label>
+          <input type="number" class="form-input" id="v-payment-days" placeholder="e.g. 30">
+          <span class="form-hint" id="msme-days-hint"></span>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Payment Mode</label>
+          <select class="form-select" id="v-payment-mode">
+            <option value="Bank Transfer">Bank Transfer (NEFT/RTGS)</option>
+            <option value="Cheque">Cheque</option>
+            <option value="UPI">UPI</option>
+            <option value="Cash">Cash</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="section-divider"><div class="section-divider-line"></div><div class="section-divider-label">&#127974; Step 7 - Bank Details</div><div class="section-divider-line"></div></div>
+      <div class="form-grid form-grid-3">
+        <div class="form-group">
+          <label class="form-label">Account Number</label>
+          <input type="text" class="form-input" id="v-bank-acc" placeholder="Account number">
+        </div>
+        <div class="form-group">
+          <label class="form-label">IFSC Code</label>
+          <input type="text" class="form-input" id="v-bank-ifsc" placeholder="e.g. HDFC0001234" oninput="this.value=this.value.toUpperCase()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Bank Name</label>
+          <input type="text" class="form-input" id="v-bank-name" placeholder="e.g. HDFC Bank">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('add-vendor-modal')">Cancel</button>
+      <button class="btn btn-primary btn-lg" onclick="saveVendor()">Save Vendor to Master</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- API KEY MODAL -->
+<div class="modal-backdrop" id="api-key-modal">
+  <div class="modal" style="width:580px;">
+    <div class="modal-header">
+      <div class="modal-title">AI Extraction Settings</div>
+      <button class="modal-close" onclick="closeModal('api-key-modal')">&#10005;</button>
+    </div>
+    <div class="modal-body">
+
+      <div id="first-time-notice" style="background:var(--accent-dim);border:1px solid #4ade8030;border-radius:6px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:var(--text2);font-family:DM Mono,monospace;line-height:1.7;">
+        &#128274; <strong style="color:var(--accent);">One-time setup.</strong> Your API key is saved permanently in this browser. You will never be asked again unless you clear browser data or switch devices.
+      </div>
+      <!-- Provider selector -->
+      <div style="font-family:DM Mono,monospace;font-size:10px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;">Choose AI Provider</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;">
+        <div id="provider-gemini-card" onclick="selectProvider('gemini')" style="border:2px solid var(--accent);border-radius:8px;padding:14px;cursor:pointer;background:var(--accent-dim);">
+          <div style="font-weight:700;font-size:14px;color:var(--accent);margin-bottom:4px;">&#127381; Google Gemini</div>
+          <div style="font-size:11px;color:var(--text2);font-family:DM Mono,monospace;line-height:1.6;">FREE - No credit card<br>1500 scans/day free<br>aistudio.google.com</div>
+        </div>
+        <div id="provider-claude-card" onclick="selectProvider('claude')" style="border:2px solid var(--border2);border-radius:8px;padding:14px;cursor:pointer;">
+          <div style="font-weight:700;font-size:14px;color:var(--text2);margin-bottom:4px;">&#129534; Anthropic Claude</div>
+          <div style="font-size:11px;color:var(--text3);font-family:DM Mono,monospace;line-height:1.6;">PAID - $5 free credits<br>~Rs.0.25 per bill (Haiku)<br>platform.anthropic.com</div>
+        </div>
+      </div>
+
+      <!-- Gemini fields -->
+      <div id="gemini-fields">
+        <div style="background:#0a1a0a;border:1px solid #4ade8030;border-left:3px solid var(--accent);border-radius:6px;padding:12px 14px;margin-bottom:16px;">
+          <div style="font-family:DM Mono,monospace;font-size:11px;color:var(--accent);margin-bottom:4px;">How to get free Gemini API key (2 min)</div>
+          <div style="font-size:12px;color:var(--text2);line-height:1.8;">1. Go to <strong style="color:var(--accent)">aistudio.google.com</strong><br>2. Sign in with Google account<br>3. Click Get API Key &rarr; Create API Key<br>4. Copy and paste below - no card needed</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Gemini API Key</label>
+          <input type="password" class="form-input" id="gemini-key-input" placeholder="AIzaSy..." style="font-family:DM Mono,monospace;font-size:13px;" oninput="validateGeminiKey(this.value)">
+          <span class="form-hint" id="gemini-key-hint">Starts with AIzaSy</span>
+        </div>
+        <div style="margin-top:12px;">
+          <div style="font-family:DM Mono,monospace;font-size:10px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">Model</div>
+          <select class="form-select" id="gemini-model-select">
+            <option value="gemini-2.0-flash">Gemini 2.0 Flash - Recommended, fast and accurate (Free)</option>
+            <option value="gemini-1.5-flash">Gemini 1.5 Flash - Proven, very reliable (Free)</option>
+            <option value="gemini-1.5-pro">Gemini 1.5 Pro - Most accurate, slower (Free tier limited)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Claude fields -->
+      <div id="claude-fields" style="display:none;">
+        <div style="background:#0d1a2a;border:1px solid #60a5fa30;border-left:3px solid var(--blue);border-radius:6px;padding:12px 14px;margin-bottom:16px;">
+          <div style="font-family:DM Mono,monospace;font-size:11px;color:var(--blue);margin-bottom:4px;">How to get Claude API key</div>
+          <div style="font-size:12px;color:var(--text2);line-height:1.8;">1. Go to <strong style="color:var(--blue)">platform.anthropic.com</strong><br>2. Sign up - get $5 free credits (no card for free tier)<br>3. Go to API Keys &rarr; Create Key<br>4. Copy and paste below</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Anthropic API Key</label>
+          <input type="password" class="form-input" id="claude-key-input" placeholder="sk-ant-api03-..." style="font-family:DM Mono,monospace;font-size:13px;" oninput="validateClaudeKey(this.value)">
+          <span class="form-hint" id="claude-key-hint">Starts with sk-ant-</span>
+        </div>
+        <div style="margin-top:12px;">
+          <div style="font-family:DM Mono,monospace;font-size:10px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">Model</div>
+          <select class="form-select" id="claude-model-select">
+            <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 - Fastest, ~Rs.0.25 per bill</option>
+            <option value="claude-sonnet-4-6">Claude Sonnet 4.6 - More accurate, ~Rs.1.50 per bill</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="margin-top:16px;padding:10px 14px;background:var(--surface2);border-radius:6px;border:1px solid var(--border2);">
+        <div id="api-key-status" style="font-family:DM Mono,monospace;font-size:11px;color:var(--text3);">No key saved</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('api-key-modal')">Cancel</button>
+      <button class="btn btn-secondary" onclick="clearAPIKey()">Clear Saved Key</button>
+      <button class="btn btn-primary btn-lg" onclick="saveAPIKey()">Save & Enable AI</button>
+    </div>
+  </div>
+</div>
+
+<!-- Processing Overlay -->
+<div class="proc-overlay" id="proc-overlay">
+  <div class="proc-spinner"></div>
+  <div class="proc-text" id="proc-text">Processing...</div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"><span id="toast-icon">&#10003;</span> <span id="toast-msg">Done</span></div>
+
+<script>
+// ── State ──────────────────────────────────────────────────
+var vendors = [];
+var journalEntries = [];
+var editingVendorId = null;
+var currentScanInv = null;
+var currentScanVendor = null;
+
+// ── Navigation ─────────────────────────────────────────────
+function showPanel(id) {
+  var panels = ['dashboard','vendors','scan','entries','tally'];
+  for (var i = 0; i < panels.length; i++) {
+    document.getElementById('panel-' + panels[i]).classList.remove('active');
+    document.getElementById('nav-' + panels[i]).classList.remove('active');
+  }
+  document.getElementById('panel-' + id).classList.add('active');
+  document.getElementById('nav-' + id).classList.add('active');
+  var titles = {
+    dashboard: ['Dashboard', 'Overview - FY 2024-25'],
+    vendors: ['Vendor Master', vendors.length + ' vendor(s) registered'],
+    scan: ['Scan Bill', 'PDF to Auto Journal Entry'],
+    entries: ['Journal Entries', journalEntries.length + ' entries posted'],
+    tally: ['Tally Export', 'Export XML for Tally Prime']
+  };
+  document.getElementById('page-title').textContent = titles[id][0];
+  document.getElementById('page-subtitle').textContent = titles[id][1];
+}
+
+// ── Vendor Modal ───────────────────────────────────────────
+function openAddVendor(id) {
+  editingVendorId = id || null;
+  document.getElementById('vendor-modal-title').textContent = id ? 'Edit Vendor' : 'Add New Vendor';
+  if (id) {
+    var v = null;
+    for (var i = 0; i < vendors.length; i++) { if (vendors[i].id === id) { v = vendors[i]; break; } }
+    if (v) populateVendorForm(v);
+  } else {
+    clearVendorForm();
+  }
+  document.getElementById('add-vendor-modal').classList.add('show');
+}
+
+function clearVendorForm() {
+  var ids = ['v-gstin','v-pan','v-name','v-ledger','v-tds-rate','v-tds-threshold','v-udyam','v-credit-limit','v-payment-days','v-bank-acc','v-bank-ifsc','v-bank-name'];
+  for (var i = 0; i < ids.length; i++) { document.getElementById(ids[i]).value = ''; }
+  document.getElementById('v-entity').value = '';
+  document.getElementById('v-tds-applicable').value = 'yes';
+  document.getElementById('v-tds-section').value = '';
+  document.getElementById('v-rcm').value = 'no';
+  document.getElementById('v-msme').value = 'no';
+  document.getElementById('v-msme-cat').value = 'Micro';
+  document.getElementById('v-einvoice').value = 'no';
+  document.getElementById('v-einvoice-slab').value = '';
+  document.getElementById('v-einvoice-qr').value = 'required';
+  document.getElementById('v-ledger-group').value = 'Indirect Expenses';
+  document.getElementById('v-payment-mode').value = 'Bank Transfer';
+  document.getElementById('auto-fill-indicator').style.display = 'none';
+  document.getElementById('einvoice-info-box').style.display = 'none';
+  document.getElementById('msme-cat-group').style.display = 'none';
+  document.getElementById('msme-udyam-group').style.display = 'none';
+}
+
+function populateVendorForm(v) {
+  document.getElementById('v-gstin').value = v.gstin || '';
+  document.getElementById('v-pan').value = v.pan || '';
+  document.getElementById('v-name').value = v.name || '';
+  document.getElementById('v-entity').value = v.entity || '';
+  document.getElementById('v-tds-applicable').value = v.tdsApplicable || 'yes';
+  document.getElementById('v-tds-section').value = v.tdsSection || '';
+  document.getElementById('v-tds-rate').value = v.tdsRate || '';
+  document.getElementById('v-tds-threshold').value = v.tdsThreshold || '';
+  document.getElementById('v-rcm').value = v.rcm || 'no';
+  document.getElementById('v-msme').value = v.msme ? 'yes' : 'no';
+  document.getElementById('v-msme-cat').value = v.msmeCat || 'Micro';
+  document.getElementById('v-udyam').value = v.udyam || '';
+  document.getElementById('v-einvoice').value = v.einvoice || 'no';
+  document.getElementById('v-einvoice-slab').value = v.einvoiceSlab || '';
+  document.getElementById('v-einvoice-qr').value = v.einvoiceQR || 'required';
+  document.getElementById('v-ledger').value = v.ledger || '';
+  document.getElementById('v-ledger-group').value = v.ledgerGroup || 'Indirect Expenses';
+  document.getElementById('v-credit-limit').value = v.creditLimit || '';
+  document.getElementById('v-payment-days').value = v.paymentDays || '';
+  document.getElementById('v-payment-mode').value = v.paymentMode || 'Bank Transfer';
+  document.getElementById('v-bank-acc').value = v.bankAcc || '';
+  document.getElementById('v-bank-ifsc').value = v.bankIFSC || '';
+  document.getElementById('v-bank-name').value = v.bankName || '';
+  if (v.msme) { document.getElementById('msme-cat-group').style.display = ''; document.getElementById('msme-udyam-group').style.display = ''; }
+  if (v.einvoice === 'yes') { document.getElementById('einvoice-info-box').style.display = ''; }
+}
+
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+
+function onGSTINChange(val) {
+  if (val.length >= 3) {
+    var pan = val.substring(2, 12);
+    document.getElementById('v-pan').value = pan;
+    document.getElementById('pan-hint').textContent = 'PAN extracted from GSTIN';
+    document.getElementById('pan-hint').className = 'form-hint success';
+    var entityMap = {'P':'Individual','C':'Private Limited','H':'Proprietorship','F':'Partnership','A':'Private Limited','T':'Trust / Society','B':'LLP','L':'LLP'};
+    var ch = pan[3] ? pan[3].toUpperCase() : '';
+    if (entityMap[ch]) document.getElementById('v-entity').value = entityMap[ch];
+  }
+  if (val.length === 15) { document.getElementById('gstin-hint').textContent = 'Valid format'; document.getElementById('gstin-hint').className = 'form-hint success'; }
+}
+
+function fetchGSTIN() {
+  var gstin = document.getElementById('v-gstin').value;
+  if (gstin.length !== 15) { showToast('Enter a valid 15-digit GSTIN first', true); return; }
+  showProc('Looking up GSTIN...');
+  var mockData = {
+    '27AAACR3592Q1ZP': {name:'Raju Printers & Stationers', entity:'Proprietorship'},
+    '29AABCC4521M1Z3': {name:'CloudHost Technologies Pvt. Ltd.', entity:'Private Limited'},
+    '07AAHCS1234R1Z5': {name:'Sharma & Associates', entity:'Partnership'}
+  };
+  setTimeout(function() {
+    hideProc();
+    var data = mockData[gstin] || {name:'Vendor - ' + gstin.substring(2,7), entity:'Private Limited'};
+    document.getElementById('v-name').value = data.name;
+    document.getElementById('v-entity').value = data.entity;
+    document.getElementById('auto-fill-indicator').style.display = 'flex';
+    document.getElementById('auto-fill-text').textContent = 'Auto-populated: ' + data.name;
+    showToast('GSTIN data fetched');
+  }, 1200);
+}
+
+function autoTDSRate(section) {
+  var rates = {'194C':[1,30000],'194J':[10,30000],'194I':[10,240000],'194A':[10,40000],'194H':[5,15000],'194M':[5,5000000]};
+  if (rates[section]) {
+    document.getElementById('v-tds-rate').value = rates[section][0];
+    document.getElementById('v-tds-threshold').value = rates[section][1];
+    document.getElementById('tds-rate-hint').textContent = 'Standard rate for ' + section;
+    document.getElementById('tds-rate-hint').className = 'form-hint success';
+  }
+}
+
+function toggleTDS(val) {
+  var op = val === 'yes' ? '1' : '0.4';
+  document.getElementById('v-tds-section').style.opacity = op;
+  document.getElementById('v-tds-rate').style.opacity = op;
+}
+
+function toggleMSME(val) {
+  var show = val === 'yes';
+  document.getElementById('msme-cat-group').style.display = show ? '' : 'none';
+  document.getElementById('msme-udyam-group').style.display = show ? '' : 'none';
+  if (show) {
+    document.getElementById('msme-days-hint').textContent = 'MSME: max 45 days (MSMED Act Sec 15)';
+    document.getElementById('msme-days-hint').className = 'form-hint warning';
+    if (!document.getElementById('v-payment-days').value) document.getElementById('v-payment-days').value = '45';
+  } else {
+    document.getElementById('msme-days-hint').textContent = '';
+  }
+}
+
+function toggleEInvoice(val) {
+  var show = val === 'yes';
+  document.getElementById('einvoice-info-box').style.display = show ? '' : 'none';
+  document.getElementById('einvoice-hint').textContent = show ? 'IRN will be required on every bill' : 'Mandatory if turnover > Rs.5 Cr';
+  document.getElementById('einvoice-hint').className = show ? 'form-hint success' : 'form-hint';
+}
+
+function saveVendor() {
+  var name = document.getElementById('v-name').value.trim();
+  var gstin = document.getElementById('v-gstin').value.trim();
+  var ledger = document.getElementById('v-ledger').value.trim();
+  if (!name || !gstin || !ledger) { showToast('Fill in Legal Name, GSTIN and Expense Ledger', true); return; }
+  var v = {
+    id: editingVendorId || String(Date.now()),
+    name: name, gstin: gstin,
+    pan: document.getElementById('v-pan').value,
+    entity: document.getElementById('v-entity').value,
+    tdsApplicable: document.getElementById('v-tds-applicable').value,
+    tdsSection: document.getElementById('v-tds-section').value,
+    tdsRate: parseFloat(document.getElementById('v-tds-rate').value) || 0,
+    tdsThreshold: parseFloat(document.getElementById('v-tds-threshold').value) || 0,
+    rcm: document.getElementById('v-rcm').value,
+    msme: document.getElementById('v-msme').value === 'yes',
+    msmeCat: document.getElementById('v-msme-cat').value,
+    udyam: document.getElementById('v-udyam').value,
+    einvoice: document.getElementById('v-einvoice').value,
+    einvoiceSlab: document.getElementById('v-einvoice-slab').value,
+    einvoiceQR: document.getElementById('v-einvoice-qr').value,
+    ledger: ledger,
+    ledgerGroup: document.getElementById('v-ledger-group').value,
+    creditLimit: parseFloat(document.getElementById('v-credit-limit').value) || 0,
+    paymentDays: parseInt(document.getElementById('v-payment-days').value) || 30,
+    paymentMode: document.getElementById('v-payment-mode').value,
+    bankAcc: document.getElementById('v-bank-acc').value,
+    bankIFSC: document.getElementById('v-bank-ifsc').value,
+    bankName: document.getElementById('v-bank-name').value
+  };
+  if (editingVendorId) {
+    for (var i = 0; i < vendors.length; i++) { if (vendors[i].id === editingVendorId) { vendors[i] = v; break; } }
+    showToast('Vendor updated');
+  } else {
+    vendors.push(v);
+    showToast('Vendor added to master');
+  }
+  closeModal('add-vendor-modal');
+  renderVendorTable();
+  updateStats();
+}
+
+function deleteVendor(id) {
+  vendors = vendors.filter(function(v) { return v.id !== id; });
+  renderVendorTable(); updateStats(); showToast('Vendor removed');
+}
+
+function renderVendorTable() {
+  var tbody = document.getElementById('vendor-tbody');
+  var table = document.getElementById('vendor-table');
+  var empty = document.getElementById('vendor-empty');
+  document.getElementById('vendor-count-badge').textContent = vendors.length;
+  if (vendors.length === 0) { table.style.display = 'none'; empty.style.display = 'block'; return; }
+  table.style.display = 'table'; empty.style.display = 'none';
+  tbody.innerHTML = '';
+  for (var i = 0; i < vendors.length; i++) {
+    var v = vendors[i];
+    var tr = document.createElement('tr');
+    tr.setAttribute('data-vendor-id', v.id);
+    tr.onclick = (function(vid) { return function() { openAddVendor(vid); }; })(v.id);
+    var initials = v.name.substring(0,2).toUpperCase();
+    var tdsBadge = (v.tdsApplicable === 'yes' && v.tdsSection)
+      ? '<span class="badge badge-gold">' + v.tdsSection + ' @ ' + v.tdsRate + '%</span>'
+      : '<span class="badge badge-muted">N/A</span>';
+    var msmeBadge = v.msme
+      ? '<span class="badge badge-amber">MSME ' + (v.msmeCat || '') + '</span>'
+      : '<span class="badge badge-muted">No</span>';
+    var einvBadge = v.einvoice === 'yes'
+      ? '<span class="badge badge-blue">Required</span>'
+      : '<span class="badge badge-muted">N/A</span>';
+    tr.innerHTML = '<td><div style="display:flex;align-items:center;gap:10px;"><div class="vendor-avatar">' + initials + '</div><div><div style="font-weight:600;color:var(--text);font-size:14px;">' + v.name + '</div><div style="font-family:DM Mono,monospace;font-size:11px;color:var(--text3);">' + v.gstin + '</div></div></div></td>'
+      + '<td><div style="font-family:DM Mono,monospace;font-size:11px;color:var(--text2);">' + (v.pan || '-') + '</div><div style="font-size:11px;color:var(--text3);margin-top:2px;">' + (v.entity || '-') + '</div></td>'
+      + '<td>' + tdsBadge + '</td>'
+      + '<td>' + msmeBadge + '</td>'
+      + '<td>' + einvBadge + '</td>'
+      + '<td style="font-size:12px;color:var(--text2);max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + (v.ledger || '-') + '</td>'
+      + '<td style="font-family:DM Mono,monospace;font-size:11px;color:var(--text3);">' + v.paymentDays + 'D - ' + (v.paymentMode || '-') + '</td>'
+      + '<td onclick="event.stopPropagation()"><div style="display:flex;gap:4px;"><button class="btn btn-ghost btn-sm" onclick="openAddVendor(\'' + v.id + '\')">Edit</button><button class="btn btn-danger btn-sm" onclick="deleteVendor(\'' + v.id + '\')">Del</button></div></td>';
+    tbody.appendChild(tr);
+  }
+}
+
+function filterVendors(q) {
+  q = q.toLowerCase();
+  var rows = document.querySelectorAll('#vendor-tbody tr');
+  for (var i = 0; i < rows.length; i++) {
+    rows[i].style.display = rows[i].textContent.toLowerCase().indexOf(q) >= 0 ? '' : 'none';
+  }
+}
+
+// ── Demo Data ──────────────────────────────────────────────
+function loadDemoVendors() {
+  if (vendors.length > 0) { showToast('Demo vendors already loaded'); return; }
+  vendors = [
+    {id:'1',name:'Raju Printers & Stationers',gstin:'27AAACR3592Q1ZP',pan:'AAACR3592Q',entity:'Proprietorship',tdsApplicable:'yes',tdsSection:'194C',tdsRate:1,tdsThreshold:30000,rcm:'no',msme:true,msmeCat:'Micro',udyam:'UDYAM-MH-28-0012345',einvoice:'no',einvoiceSlab:'',einvoiceQR:'required',ledger:'Office Stationery & Printing',ledgerGroup:'Indirect Expenses',creditLimit:100000,paymentDays:45,paymentMode:'Bank Transfer',bankAcc:'50100234567890',bankIFSC:'HDFC0001234',bankName:'HDFC Bank'},
+    {id:'2',name:'CloudHost Technologies Pvt. Ltd.',gstin:'29AABCC4521M1Z3',pan:'AABCC4521M',entity:'Private Limited',tdsApplicable:'yes',tdsSection:'194J',tdsRate:10,tdsThreshold:30000,rcm:'no',msme:false,msmeCat:'',udyam:'',einvoice:'yes',einvoiceSlab:'50-100',einvoiceQR:'required',ledger:'Cloud & IT Infrastructure Expenses',ledgerGroup:'Indirect Expenses',creditLimit:500000,paymentDays:30,paymentMode:'Bank Transfer',bankAcc:'001234567890',bankIFSC:'ICIC0000123',bankName:'ICICI Bank'},
+    {id:'3',name:'Sharma & Associates',gstin:'07AAHCS1234R1Z5',pan:'AAHCS1234R',entity:'Partnership',tdsApplicable:'yes',tdsSection:'194J',tdsRate:10,tdsThreshold:30000,rcm:'no',msme:false,msmeCat:'',udyam:'',einvoice:'no',einvoiceSlab:'',einvoiceQR:'optional',ledger:'Professional & Legal Charges',ledgerGroup:'Indirect Expenses',creditLimit:200000,paymentDays:15,paymentMode:'Cheque',bankAcc:'',bankIFSC:'',bankName:''}
+  ];
+  renderVendorTable(); updateStats(); showToast('3 demo vendors loaded');
+}
+
+// ── Demo Invoices ──────────────────────────────────────────
+var demoInvoices = [
+  {gstin:'27AAACR3592Q1ZP',invoice:'RPS/2024-25/1892',date:'12 Mar 2025',lineItems:[{desc:'Office Stationery (A4 Reams, Files)',hsn:'4820',qty:10,rate:850,amt:8500,gstRate:12},{desc:'Printing - Letterheads & Envelopes',hsn:'998912',qty:1,rate:4200,amt:4200,gstRate:18},{desc:'Toner Cartridge HP LaserJet',hsn:'84439910',qty:2,rate:1850,amt:3700,gstRate:18}],subTotal:16400,cgst:1386,sgst:1386,grandTotal:19172,irn:null,qrVerified:false},
+  {gstin:'29AABCC4521M1Z3',invoice:'CHT/INV/25-26/0041',date:'01 Mar 2025',lineItems:[{desc:'Cloud Server Hosting (Annual)',hsn:'998315',qty:1,rate:48000,amt:48000,gstRate:18},{desc:'SSL Certificate Renewal',hsn:'998315',qty:1,rate:3000,amt:3000,gstRate:18},{desc:'Domain Registration (3 domains)',hsn:'998315',qty:3,rate:1200,amt:3600,gstRate:18}],subTotal:54600,cgst:4914,sgst:4914,grandTotal:64428,irn:'a7f3c8e2b1d94f5a6c0e8b3d2f1a9c7e5b0d4f8a2c6e0b4d8f2a6c0e4b8d2f6',qrVerified:true}
+];
+
+function handleBillUpload(e) {
+  if (!e.target.files[0]) return;
+  var provider = localStorage.getItem('ai_provider');
+  var hasKey = (provider === 'gemini' && localStorage.getItem('gemini_api_key')) ||
+               (provider === 'claude' && localStorage.getItem('claude_api_key'));
+  if (!hasKey) {
+    // First time - show setup modal with friendly message
+    showFirstTimeSetup();
+    return;
+  }
+  extractBillWithAI(e.target.files[0]);
+}
+
+function showFirstTimeSetup() {
+  // Store the pending file so we can process it after setup
+  openAPISettings();
+  // Show a banner inside the modal explaining it's a one-time step
+  setTimeout(function() {
+    var status = document.getElementById('api-key-status');
+    if (status) {
+      status.innerHTML = '<span style="color:var(--accent);">&#9888; One-time setup</span> - your key is saved permanently in this browser. You will never need to enter it again.';
+    }
+  }, 50);
+}
+
+function runDemoScan(idx) {
+  if (vendors.length === 0) loadDemoVendors();
+  processBillData(demoInvoices[idx]);
+}
+
+// ── Real AI Extraction (Gemini + Claude) ──────────────────
+function extractBillWithAI(file) {
+  var provider = localStorage.getItem('ai_provider') || 'gemini';
+  if (provider === 'gemini') {
+    extractWithGemini(file);
+  } else {
+    extractWithClaude(file);
+  }
+}
+
+var EXTRACTION_PROMPT = 'You are an Indian accounting assistant. Extract all data from this bill/invoice image.'
+  + ' Return ONLY a raw JSON object - no markdown, no code block, no explanation, just the JSON.'
+  + ' Use this exact structure: {"gstin":"","invoice":"","date":"","vendorName":"","subTotal":0,"cgst":0,"sgst":0,"igst":0,"grandTotal":0,"lineItems":[{"desc":"","hsn":"","qty":1,"rate":0,"amt":0,"gstRate":0}],"irn":null,"qrVerified":false}'
+  + ' Rules: gstin = supplier GSTIN (15 chars). date format = DD Mon YYYY (e.g. 12 Mar 2025). All amounts as plain numbers.'
+  + ' If only IGST shown (inter-state), put value in igst field and set cgst=0 sgst=0.'
+  + ' Extract every line item with its HSN/SAC code and GST rate %.'
+  + ' IRN = 64-character hash code printed on e-invoice, or null if absent. qrVerified = true only if QR code present.';
+
+function parseExtractedJSON(text) {
+  text = text.trim();
+  // Strip markdown fences if present
+  var fence = String.fromCharCode(96,96,96);
+  if (text.indexOf(fence) >= 0) {
+    text = text.replace(new RegExp(fence + 'json', 'g'), '').replace(new RegExp(fence, 'g'), '').trim();
+  }
+  var start = text.indexOf('{');
+  var end = text.lastIndexOf('}');
+  if (start >= 0 && end > start) text = text.substring(start, end + 1);
+  var extracted = JSON.parse(text);
+  return {
+    gstin: extracted.gstin || '',
+    invoice: extracted.invoice || 'Unknown',
+    date: extracted.date || new Date().toLocaleDateString('en-IN'),
+    vendorName: extracted.vendorName || '',
+    subTotal: Number(extracted.subTotal) || 0,
+    cgst: Number(extracted.cgst) || 0,
+    sgst: Number(extracted.sgst) || 0,
+    igst: Number(extracted.igst) || 0,
+    grandTotal: Number(extracted.grandTotal) || 0,
+    lineItems: extracted.lineItems || [],
+    irn: extracted.irn || null,
+    qrVerified: extracted.qrVerified || false,
+    aiExtracted: true
+  };
+}
+
+// Compress image to JPEG under 800KB for iOS Safari compatibility
+function compressImage(file, callback) {
+  var img = new Image();
+  var url = URL.createObjectURL(file);
+  img.onload = function() {
+    var maxW = 1600, maxH = 1600;
+    var w = img.width, h = img.height;
+    if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
+    if (h > maxH) { w = Math.round(w * maxH / h); h = maxH; }
+    var canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    var ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, w, h);
+    URL.revokeObjectURL(url);
+    // Start at quality 0.85, reduce if still too large
+    var quality = 0.85;
+    var dataUrl = canvas.toDataURL('image/jpeg', quality);
+    // If still > 800KB base64, compress more
+    while (dataUrl.length > 1100000 && quality > 0.4) {
+      quality -= 0.1;
+      dataUrl = canvas.toDataURL('image/jpeg', quality);
+    }
+    callback(dataUrl.split(',')[1], 'image/jpeg');
+  };
+  img.onerror = function() {
+    // Fallback: read as-is
+    var reader = new FileReader();
+    reader.onload = function(e) { callback(e.target.result.split(',')[1], file.type || 'image/jpeg'); };
+    reader.readAsDataURL(file);
+  };
+  img.src = url;
+}
+
+// iOS-safe XHR call
+function xhrPost(url, headers, bodyObj, onSuccess, onError) {
+  var xhr = new XMLHttpRequest();
+  xhr.open('POST', url, true);
+  for (var h in headers) { xhr.setRequestHeader(h, headers[h]); }
+  xhr.timeout = 60000;
+  xhr.onload = function() {
+    try {
+      var data = JSON.parse(xhr.responseText);
+      onSuccess(data);
+    } catch(e) { onError('Invalid response from server'); }
+  };
+  xhr.onerror = function() { onError('Network request failed. Check your internet connection.'); };
+  xhr.ontimeout = function() { onError('Request timed out. Try again.'); };
+  xhr.send(JSON.stringify(bodyObj));
+}
+
+function extractWithGemini(file) {
+  var apiKey = localStorage.getItem('gemini_api_key');
+  var model = localStorage.getItem('gemini_model') || 'gemini-2.0-flash';
+  if (!apiKey) { openAPISettings(); return; }
+
+  showProc('Reading bill...');
+  document.getElementById('scan-upload-view').style.display = 'none';
+
+  var mimeType = file.type || 'image/jpeg';
+  var isPDF = mimeType === 'application/pdf';
+
+  if (isPDF) {
+    // For PDFs: read as base64 directly - no canvas compression
+    updateProcText('Reading PDF...');
+    var pdfReader = new FileReader();
+    pdfReader.onload = function(evt) {
+      var base64 = evt.target.result.split(',')[1];
+      updateProcText('Sending to Gemini AI...');
+      var url = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + apiKey;
+      var body = {
+        contents: [{parts: [{inline_data:{mime_type:'application/pdf', data:base64}}, {text:EXTRACTION_PROMPT}]}],
+        generationConfig: {temperature:0, maxOutputTokens:1500}
+      };
+      xhrPost(url, {'Content-Type':'application/json'}, body,
+        function(data) {
+          hideProc();
+          if (data.error) { showToast('Gemini: ' + data.error.message, true); resetScan(); return; }
+          var text = '';
+          try { text = data.candidates[0].content.parts[0].text; } catch(e) {}
+          if (!text) { showToast('No data extracted. Try uploading as JPG image.', true); resetScan(); return; }
+          try { processBillData(parseExtractedJSON(text)); }
+          catch(e) { showToast('Could not read bill data. Try a photo instead.', true); resetScan(); }
+        },
+        function(err) { hideProc(); showToast(err, true); resetScan(); }
+      );
+    };
+    pdfReader.readAsDataURL(file);
+  } else {
+    // For images: compress first to keep payload small (fixes iOS Safari)
+    updateProcText('Compressing image...');
+    compressImage(file, function(base64, mime) {
+      updateProcText('Sending to Gemini AI...');
+      var url = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + apiKey;
+      var body = {
+        contents: [{parts: [{inline_data:{mime_type:mime, data:base64}}, {text:EXTRACTION_PROMPT}]}],
+        generationConfig: {temperature:0, maxOutputTokens:1500}
+      };
+      xhrPost(url, {'Content-Type':'application/json'}, body,
+        function(data) {
+          hideProc();
+          if (data.error) { showToast('Gemini: ' + data.error.message, true); resetScan(); return; }
+          var text = '';
+          try { text = data.candidates[0].content.parts[0].text; } catch(e) {}
+          if (!text) { showToast('No data extracted. Try a clearer photo.', true); resetScan(); return; }
+          try { processBillData(parseExtractedJSON(text)); }
+          catch(e) { showToast('Could not read bill. Try a clearer photo.', true); resetScan(); }
+        },
+        function(err) { hideProc(); showToast(err, true); resetScan(); }
+      );
+    });
+  }
+}
+
+function extractWithClaude(file) {
+  var apiKey = localStorage.getItem('claude_api_key');
+  var model = localStorage.getItem('claude_model') || 'claude-haiku-4-5-20251001';
+  if (!apiKey) { openAPISettings(); return; }
+
+  showProc('Reading bill...');
+  document.getElementById('scan-upload-view').style.display = 'none';
+
+  var mimeType = file.type || 'image/jpeg';
+  var isPDF = mimeType === 'application/pdf';
+
+  var processBase64 = function(base64, mime) {
+    updateProcText('Sending to Claude AI...');
+    var messageContent = [];
+    if (isPDF) {
+      messageContent.push({type:'document', source:{type:'base64', media_type:'application/pdf', data:base64}});
+    } else {
+      messageContent.push({type:'image', source:{type:'base64', media_type:mime, data:base64}});
+    }
+    messageContent.push({type:'text', text:EXTRACTION_PROMPT});
+    var headers = {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    };
+    xhrPost('https://api.anthropic.com/v1/messages', headers,
+      {model:model, max_tokens:1500, messages:[{role:'user', content:messageContent}]},
+      function(data) {
+        hideProc();
+        if (data.error) { showToast('Claude: ' + data.error.message, true); resetScan(); return; }
+        var text = '';
+        for (var i = 0; i < data.content.length; i++) {
+          if (data.content[i].type === 'text') { text = data.content[i].text; break; }
+        }
+        if (!text) { showToast('No response from Claude.', true); resetScan(); return; }
+        try { processBillData(parseExtractedJSON(text)); }
+        catch(e) { showToast('Could not read bill. Try a clearer photo.', true); resetScan(); }
+      },
+      function(err) { hideProc(); showToast(err, true); resetScan(); }
+    );
+  };
+
+  if (isPDF) {
+    var r = new FileReader();
+    r.onload = function(e) { processBase64(e.target.result.split(',')[1], 'application/pdf'); };
+    r.readAsDataURL(file);
+  } else {
+    updateProcText('Compressing image...');
+    compressImage(file, processBase64);
+  }
+}
+
+function processBillData(inv) {
+  showProc('Matching with Vendor Master...');
+  setTimeout(function() {
+    hideProc();
+    var vendor = null;
+    for (var i = 0; i < vendors.length; i++) {
+      if (vendors[i].gstin === inv.gstin) { vendor = vendors[i]; break; }
+    }
+    if (!vendor) {
+      currentScanInv = inv;
+      buildQuickAdd(inv);
+    } else {
+      currentScanInv = inv;
+      currentScanVendor = vendor;
+      buildScanResult(inv, vendor);
+    }
+  }, 600);
+}
+
+// ── Build Scan Result using DOM (NO template literals) ─────
+function buildScanResult(inv, vendor) {
+  var tdsAmt = vendor.tdsApplicable === 'yes' ? Math.round(inv.subTotal * vendor.tdsRate / 100) : 0;
+  var netPayable = inv.grandTotal - tdsAmt;
+  var itc = inv.cgst + inv.sgst;
+  var dueDate = new Date();
+  dueDate.setDate(dueDate.getDate() + (vendor.paymentDays || 30));
+  var dueDateStr = dueDate.toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'});
+  var eInvApplicable = vendor.einvoice === 'yes';
+  var irnPresent = !!inv.irn;
+
+  var container = document.getElementById('scan-result-view');
+  container.innerHTML = '';
+
+  // Match banner
+  var banner = el('div', 'match-banner');
+  banner.innerHTML = '<div style="font-size:24px">&#9989;</div><div><div style="font-size:14px;font-weight:700;color:var(--accent)">Vendor Found in Master - All Details Auto-Populated</div><div style="font-size:12px;color:var(--text2);font-family:DM Mono,monospace;margin-top:2px;">GSTIN ' + inv.gstin + ' matched to "' + vendor.name + '" - ' + (vendor.tdsSection || 'No TDS') + '</div></div><button class="btn btn-ghost btn-sm" style="margin-left:auto;" onclick="resetScan()">Scan Another</button>';
+  container.appendChild(banner);
+
+  // Bill summary card
+  var billCard = el('div', 'card', 'margin-bottom:20px;');
+  var bh = el('div', 'card-header');
+  bh.innerHTML = '<div class="card-title">&#128196; Extracted Bill Data <span class="badge badge-green" style="font-size:10px;">AI Extracted</span></div><div style="font-family:DM Mono,monospace;font-size:11px;color:var(--text3);">Confidence: <span style="color:var(--accent)">94%</span></div>';
+  billCard.appendChild(bh);
+  var metaGrid = el('div','meta-grid');
+  var metaCells = [['Vendor',vendor.name],['Invoice No.',inv.invoice],['Date',inv.date],['Grand Total','Rs.' + inv.grandTotal.toLocaleString('en-IN')]];
+  for (var i = 0; i < metaCells.length; i++) {
+    var mc = el('div','meta-cell'); mc.innerHTML = '<div class="meta-label">' + metaCells[i][0] + '</div><div class="meta-value">' + metaCells[i][1] + '</div>';
+    metaGrid.appendChild(mc);
+  }
+  billCard.appendChild(metaGrid);
+  // Line items table
+  var tbl = document.createElement('table'); tbl.style.cssText = 'width:100%;border-collapse:collapse;font-size:13px;';
+  tbl.innerHTML = '<thead><tr style="background:var(--surface2);"><th style="padding:10px 16px;text-align:left;font-family:DM Mono,monospace;font-size:10px;color:var(--text3);font-weight:500;border-bottom:1px solid var(--border);">Description</th><th style="padding:10px 16px;font-family:DM Mono,monospace;font-size:10px;color:var(--text3);font-weight:500;border-bottom:1px solid var(--border);">HSN</th><th style="padding:10px 16px;text-align:right;font-family:DM Mono,monospace;font-size:10px;color:var(--text3);font-weight:500;border-bottom:1px solid var(--border);">Amount</th><th style="padding:10px 16px;font-family:DM Mono,monospace;font-size:10px;color:var(--text3);font-weight:500;border-bottom:1px solid var(--border);">GST%</th></tr></thead>';
+  var tbody2 = document.createElement('tbody');
+  for (var i = 0; i < inv.lineItems.length; i++) {
+    var item = inv.lineItems[i];
+    var row = document.createElement('tr');
+    row.innerHTML = '<td style="padding:12px 16px;border-bottom:1px solid var(--border);">' + item.desc + '</td><td style="padding:12px 16px;border-bottom:1px solid var(--border);"><span class="badge badge-blue">' + item.hsn + '</span></td><td style="padding:12px 16px;text-align:right;border-bottom:1px solid var(--border);font-family:DM Mono,monospace;font-weight:500;">Rs.' + item.amt.toLocaleString('en-IN') + '</td><td style="padding:12px 16px;border-bottom:1px solid var(--border);"><span class="badge badge-green">' + item.gstRate + '%</span></td>';
+    tbody2.appendChild(row);
+  }
+  addSummaryRow(tbody2, 'Sub Total', inv.subTotal, 'var(--surface2)');
+  addSummaryRow(tbody2, 'CGST', inv.cgst, '');
+  addSummaryRow(tbody2, 'SGST', inv.sgst, '');
+  addSummaryRow(tbody2, 'Grand Total', inv.grandTotal, 'var(--surface3)', true);
+  tbl.appendChild(tbody2); billCard.appendChild(tbl);
+  container.appendChild(billCard);
+
+  // Vendor from Master card
+  var vCard = el('div','card','margin-bottom:20px;');
+  var vh = el('div','card-header');
+  vh.innerHTML = '<div class="card-title">&#127970; Vendor Details <span class="badge badge-gold">From Master</span></div><button class="btn btn-ghost btn-sm" onclick="showPanel(\'vendors\'); openAddVendor(\'' + vendor.id + '\')">Edit Vendor</button>';
+  vCard.appendChild(vh);
+  var vmg = el('div','vendor-meta-grid');
+  var vmCells = [['GSTIN',vendor.gstin],['PAN',vendor.pan || '-'],['Entity',vendor.entity || '-'],['MSME',vendor.msme ? (vendor.msmeCat + ' Enterprise') : 'No'],['e-Invoice',eInvApplicable ? ('Yes - ' + (vendor.einvoiceSlab||'?') + ' Cr') : 'Not Applicable'],['Expense Ledger',vendor.ledger],['TDS Section',vendor.tdsApplicable==='yes' ? (vendor.tdsSection + ' @ ' + vendor.tdsRate + '%') : 'N/A'],['Payment Terms',vendor.paymentDays + ' Days'],['Due Date',dueDateStr]];
+  for (var i = 0; i < vmCells.length; i++) {
+    var vc = el('div','vendor-meta-cell'); vc.innerHTML = '<div style="font-family:DM Mono,monospace;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">' + vmCells[i][0] + '</div><div style="font-size:12px;font-weight:600;color:var(--text);">' + vmCells[i][1] + '</div>';
+    vmg.appendChild(vc);
+  }
+  vCard.appendChild(vmg);
+  if (vendor.msme) {
+    var mw = el('div','msme-warning','margin:12px 16px;');
+    mw.textContent = 'MSME Vendor - Pay within ' + vendor.paymentDays + ' days (MSMED Act Sec 15). Due: ' + dueDateStr;
+    vCard.appendChild(mw);
+  }
+  container.appendChild(vCard);
+
+  // Compliance heading
+  var sh = el('div','section-heading');
+  sh.innerHTML = '<span>&#9878; COMPLIANCE ANALYSIS</span><div class="section-heading-line"></div>';
+  container.appendChild(sh);
+
+  // Compliance 4 cards
+  var cg = el('div','comp-grid');
+  // TDS
+  var tdsCard = el('div','comp-card tds');
+  tdsCard.innerHTML = '<div class="comp-label">TDS Deduction</div><div class="comp-value">' + (vendor.tdsApplicable==='yes' ? (vendor.tdsRate + '% u/s ' + vendor.tdsSection) : 'Not Applicable') + '</div><div class="comp-detail">' + (vendor.tdsApplicable==='yes' ? 'Deduct before payment<br>Threshold: Rs.' + (vendor.tdsThreshold||0).toLocaleString('en-IN') + ' p.a.' : 'No TDS for this vendor') + '</div><div class="comp-amount"><span class="comp-amount-label">Deduct</span><span class="comp-amount-val">Rs.' + tdsAmt.toLocaleString('en-IN') + '</span></div>';
+  // GST
+  var gstCard = el('div','comp-card gst');
+  gstCard.innerHTML = '<div class="comp-label">GST Input Credit</div><div class="comp-value">ITC Available</div><div class="comp-detail">Vendor GST registered<br>Full ITC on GSTR-2B</div><div class="comp-amount"><span class="comp-amount-label">ITC Claim</span><span class="comp-amount-val">Rs.' + itc.toLocaleString('en-IN') + '</span></div>';
+  // RCM
+  var rcmCard = el('div','comp-card rcm');
+  rcmCard.innerHTML = '<div class="comp-label">RCM</div><div class="comp-value">' + (vendor.rcm==='yes' ? 'Applicable' : 'Not Applicable') + '</div><div class="comp-detail">' + (vendor.rcm==='yes' ? 'Pay GST to govt<br>Vendor not to charge' : 'Vendor charges GST<br>No reverse charge') + '</div><div class="comp-amount"><span class="comp-amount-label">Pay to Govt</span><span class="comp-amount-val">Rs.0</span></div>';
+  // e-Invoice
+  var einvClass = 'comp-card ' + (eInvApplicable ? 'einv' : 'einv-na');
+  var einvCard = el('div', einvClass);
+  var einvDetailHtml = eInvApplicable
+    ? 'IRN: <span style="color:' + (irnPresent ? 'var(--accent)' : 'var(--red)') + '">' + (irnPresent ? 'Present' : 'Missing') + '</span><br>QR: <span style="color:' + (inv.qrVerified ? 'var(--accent)' : 'var(--amber)') + '">' + (inv.qrVerified ? 'Verified' : 'Unverified') + '</span><br>Slab: ' + (vendor.einvoiceSlab||'-') + ' Cr'
+    : 'Turnover below<br>Rs.5 Cr threshold';
+  einvCard.innerHTML = '<div class="comp-label">e-Invoice</div><div class="comp-value" style="color:' + (eInvApplicable ? 'var(--blue)' : 'var(--text2)') + ';font-size:14px;">' + (eInvApplicable ? 'Applicable' : 'Not Required') + '</div><div class="comp-detail">' + einvDetailHtml + '</div><div class="comp-amount"><span class="comp-amount-label">IRN Status</span><span class="comp-amount-val" style="color:' + (eInvApplicable ? (irnPresent ? 'var(--accent)' : 'var(--red)') : 'var(--text3)') + ';font-size:11px;">' + (eInvApplicable ? (irnPresent ? 'Valid' : 'Missing') : 'N/A') + '</span></div>';
+  cg.appendChild(tdsCard); cg.appendChild(gstCard); cg.appendChild(rcmCard); cg.appendChild(einvCard);
+  container.appendChild(cg);
+
+  // IRN warning if applicable but missing
+  if (eInvApplicable && !irnPresent) {
+    var irnWarn = el('div','irn-warning');
+    irnWarn.innerHTML = '<span style="font-size:16px;flex-shrink:0;">&#9888;</span><div style="flex:1;"><div style="font-weight:700;color:var(--red);font-size:13px;margin-bottom:4px;">e-Invoice IRN Missing</div><div style="font-family:DM Mono,monospace;font-size:11px;color:var(--text3);line-height:1.7;margin-bottom:10px;">This vendor requires e-Invoice. No IRN found on this bill. ITC may be disallowed. Ask vendor to regenerate via IRP portal.</div><div style="display:flex;gap:8px;"><input type="text" id="irn-input" placeholder="Paste IRN here (64 characters)..." style="flex:1;background:var(--surface3);border:1px solid var(--border2);border-radius:4px;padding:7px 12px;color:var(--text);font-family:DM Mono,monospace;font-size:11px;outline:none;"><button class="btn btn-secondary btn-sm" onclick="saveIRN()">Save IRN</button></div></div>';
+    container.appendChild(irnWarn);
+  }
+
+  // Journal Entry heading
+  var jh = el('div','section-heading');
+  jh.innerHTML = '<span>&#128210; JOURNAL ENTRY PREVIEW - EDITABLE</span><div class="section-heading-line"></div>';
+  container.appendChild(jh);
+
+  // Journal preview
+  var jp = el('div','journal-preview','margin-bottom:20px;');
+  var jtbl = document.createElement('table');
+  jtbl.innerHTML = '<thead><tr><th>Ledger Account</th><th>Under Group</th><th style="text-align:right;">Dr (Rs.)</th><th style="text-align:right;">Cr (Rs.)</th></tr></thead>';
+  var jtbody = document.createElement('tbody');
+  addJournalRow(jtbody, vendor.ledger, vendor.ledgerGroup, inv.subTotal, 0, false);
+  addJournalRow(jtbody, 'CGST Input Tax Credit', 'Current Assets', inv.cgst, 0, false);
+  addJournalRow(jtbody, 'SGST Input Tax Credit', 'Current Assets', inv.sgst, 0, false);
+  if (tdsAmt > 0) addJournalRow(jtbody, 'To TDS Payable u/s ' + vendor.tdsSection, 'Current Liabilities', 0, tdsAmt, true);
+  addJournalRow(jtbody, 'To ' + vendor.name, 'Sundry Creditors', 0, netPayable, true);
+  var totalDr = inv.subTotal + inv.cgst + inv.sgst;
+  var totRow = document.createElement('tr'); totRow.className = 'totals-row';
+  totRow.innerHTML = '<td colspan="2" style="text-align:right;color:var(--text2);">TOTAL</td><td class="dr">Rs.' + totalDr.toLocaleString('en-IN') + '</td><td class="cr">Rs.' + totalDr.toLocaleString('en-IN') + '</td>';
+  jtbody.appendChild(totRow);
+  jtbl.appendChild(jtbody); jp.appendChild(jtbl);
+  container.appendChild(jp);
+
+  // Narration
+  var narDiv = el('div','','margin-bottom:16px;');
+  narDiv.innerHTML = '<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;">Narration</div>';
+  var narInput = document.createElement('input');
+  narInput.type = 'text'; narInput.className = 'form-input'; narInput.id = 'entry-narration';
+  narInput.value = 'Being expense for Invoice ' + inv.invoice + ' from ' + vendor.name + ' dt. ' + inv.date;
+  narInput.style.fontSize = '13px';
+  narDiv.appendChild(narInput);
+  container.appendChild(narDiv);
+
+  // Action buttons
+  var actions = el('div','','display:flex;gap:10px;flex-wrap:wrap;');
+  var postBtn = document.createElement('button'); postBtn.className = 'btn btn-primary btn-lg'; postBtn.textContent = 'Post Journal Entry'; postBtn.onclick = postCurrentScan;
+  var xmlBtn = document.createElement('button'); xmlBtn.className = 'btn btn-secondary'; xmlBtn.textContent = 'Download Tally XML'; xmlBtn.onclick = downloadCurrentXML;
+  var resetBtn = document.createElement('button'); resetBtn.className = 'btn btn-ghost'; resetBtn.textContent = 'Scan Another Bill'; resetBtn.onclick = resetScan;
+  actions.appendChild(postBtn); actions.appendChild(xmlBtn); actions.appendChild(resetBtn);
+  container.appendChild(actions);
+
+  container.style.display = 'block';
+}
+
+function el(tag, className, style) {
+  var e = document.createElement(tag);
+  if (className) e.className = className;
+  if (style) e.style.cssText = style;
+  return e;
+}
+
+function addSummaryRow(tbody, label, amount, bg, bold) {
+  var tr = document.createElement('tr');
+  if (bg) tr.style.background = bg;
+  var amtStyle = 'padding:10px 16px;text-align:right;font-family:DM Mono,monospace;' + (bold ? 'font-weight:700;font-size:15px;color:var(--accent);' : 'font-weight:600;');
+  tr.innerHTML = '<td colspan="2" style="padding:10px 16px;text-align:right;font-size:12px;color:var(--text3);' + (bold ? 'font-weight:700;color:var(--text);' : '') + '">' + label + '</td><td style="' + amtStyle + '">Rs.' + amount.toLocaleString('en-IN') + '</td><td></td>';
+  tbody.appendChild(tr);
+}
+
+function addJournalRow(tbody, ledgerName, groupName, dr, cr, indent) {
+  var tr = document.createElement('tr');
+  var nameHtml = '<div class="ledger-name"' + (indent ? ' style="padding-left:16px;"' : '') + ' contenteditable="true" style="outline:none;border-bottom:1px dashed var(--border2);padding-bottom:2px;">' + ledgerName + '</div><div class="ledger-group"' + (indent ? ' style="padding-left:16px;"' : '') + '>' + groupName + '</div>';
+  tr.innerHTML = '<td>' + nameHtml + '</td><td><span class="badge badge-muted">' + groupName + '</span></td><td class="dr">' + (dr > 0 ? 'Rs.' + dr.toLocaleString('en-IN') : '-') + '</td><td class="cr">' + (cr > 0 ? 'Rs.' + cr.toLocaleString('en-IN') : '-') + '</td>';
+  tbody.appendChild(tr);
+}
+
+function saveIRN() {
+  var input = document.getElementById('irn-input');
+  if (input && input.value && input.value.length === 64) {
+    if (currentScanInv) currentScanInv.irn = input.value;
+    showToast('IRN saved - entry can now be posted');
+  } else {
+    showToast('IRN must be exactly 64 characters', true);
+  }
+}
+
+function postCurrentScan() {
+  if (!currentScanInv || !currentScanVendor) { showToast('No scan data', true); return; }
+  var inv = currentScanInv; var vendor = currentScanVendor;
+  var tdsAmt = vendor.tdsApplicable === 'yes' ? Math.round(inv.subTotal * vendor.tdsRate / 100) : 0;
+  var netPayable = inv.grandTotal - tdsAmt;
+  var narration = document.getElementById('entry-narration') ? document.getElementById('entry-narration').value : '';
+  journalEntries.push({inv:inv, vendor:vendor, tdsAmt:tdsAmt, netPayable:netPayable, narration:narration, id:String(Date.now()), date:new Date().toLocaleDateString('en-IN')});
+  updateStats(); renderEntries(); renderTallyExport();
+  showToast('Journal entry posted');
+  setTimeout(function() { showPanel('entries'); }, 800);
+}
+
+function downloadCurrentXML() {
+  if (!currentScanInv || !currentScanVendor) return;
+  var tdsAmt = currentScanVendor.tdsApplicable === 'yes' ? Math.round(currentScanInv.subTotal * currentScanVendor.tdsRate / 100) : 0;
+  downloadEntryXML(currentScanInv, currentScanVendor, tdsAmt, currentScanInv.grandTotal - tdsAmt);
+}
+
+// ── Quick-Add Vendor from Scan ─────────────────────────────
+var quickAddStep = 1;
+
+function buildQuickAdd(inv) {
+  var container = document.getElementById('scan-quickadd-view');
+  container.innerHTML = '';
+  container.style.display = 'block';
+  quickAddStep = 1;
+
+  // Banner: bill extracted summary
+  var banner = el('div', 'quickadd-banner');
+  banner.innerHTML = '<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">'
+    + '<span style="font-size:20px;">&#129534;</span>'
+    + '<div><div style="font-size:14px;font-weight:700;color:var(--blue);">New Vendor - Quick Setup Required</div>'
+    + '<div style="font-size:12px;color:var(--text2);font-family:DM Mono,monospace;margin-top:2px;">GSTIN ' + inv.gstin + ' is not in your Vendor Master. Fill in the details below - this takes 2 minutes and every future bill from this vendor will be instant.</div>'
+    + '</div></div>'
+    + '<div style="background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:12px 16px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">'
+    + '<div><div style="font-family:DM Mono,monospace;font-size:9px;color:var(--text3);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;">From Bill</div><div style="font-size:13px;font-weight:600;color:var(--text);">Invoice ' + inv.invoice + '</div></div>'
+    + '<div><div style="font-family:DM Mono,monospace;font-size:9px;color:var(--text3);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;">Date</div><div style="font-size:13px;font-weight:600;color:var(--text);">' + inv.date + '</div></div>'
+    + '<div><div style="font-family:DM Mono,monospace;font-size:9px;color:var(--text3);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;">Amount</div><div style="font-size:13px;font-weight:600;color:var(--accent);">Rs.' + inv.grandTotal.toLocaleString('en-IN') + '</div></div>'
+    + '</div>';
+  container.appendChild(banner);
+
+  // Step tabs
+  var tabs = el('div', 'quickadd-steps');
+  var stepLabels = ['1. Identity', '2. TDS', '3. MSME & e-Invoice', '4. Ledger & Terms'];
+  for (var i = 0; i < stepLabels.length; i++) {
+    var tab = el('div', 'qs-step' + (i === 0 ? ' active' : ''));
+    tab.id = 'qs-tab-' + (i + 1);
+    tab.textContent = stepLabels[i];
+    tabs.appendChild(tab);
+  }
+  container.appendChild(tabs);
+
+  // Page 1: Identity
+  var p1 = el('div', 'qs-page active'); p1.id = 'qs-page-1';
+  p1.innerHTML = '<div style="margin-bottom:16px;padding:12px 16px;background:var(--accent-dim);border:1px solid #4ade8030;border-radius:6px;">'
+    + '<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--accent);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">Extracted from Bill</div>'
+    + '<div class="form-grid form-grid-2">'
+    + '<div><div class="extracted-field-label" style="font-family:DM Mono,monospace;font-size:10px;color:var(--text3);margin-bottom:2px;">GSTIN</div><div style="font-size:13px;font-weight:600;color:var(--accent);">' + inv.gstin + '</div></div>'
+    + '<div><div class="extracted-field-label" style="font-family:DM Mono,monospace;font-size:10px;color:var(--text3);margin-bottom:2px;">PAN (auto)</div><div style="font-size:13px;font-weight:600;color:var(--accent);">' + inv.gstin.substring(2,12) + '</div></div>'
+    + '</div></div>'
+    + '<div class="form-grid form-grid-2" style="margin-top:16px;">'
+    + '<div class="form-group"><label class="form-label">Legal Name <span class="required">*</span></label><input type="text" class="form-input" id="qa-name" placeholder="As per GST registration"></div>'
+    + '<div class="form-group"><label class="form-label">Entity Type</label><select class="form-select" id="qa-entity"><option value="">-- Select --</option><option value="Private Limited">Private Limited</option><option value="Public Limited">Public Limited</option><option value="LLP">LLP</option><option value="Partnership">Partnership Firm</option><option value="Proprietorship">Proprietorship</option><option value="Individual">Individual</option><option value="Trust">Trust / Society</option></select></div>'
+    + '</div>'
+    + '<div style="margin-top:8px;"><button class="btn btn-secondary btn-sm" onclick="quickFetchGSTIN()">&#9889; Auto-Fill from GSTIN</button></div>';
+  // Set entity from PAN char
+  var entityMap = {'P':'Individual','C':'Private Limited','H':'Proprietorship','F':'Partnership','A':'Private Limited','T':'Trust / Society','B':'LLP','L':'LLP'};
+  var panChar = inv.gstin[5] ? inv.gstin[5].toUpperCase() : '';
+  if (entityMap[panChar]) {
+    setTimeout(function() {
+      var sel = document.getElementById('qa-entity');
+      if (sel) sel.value = entityMap[panChar];
+    }, 50);
+  }
+  container.appendChild(p1);
+
+  // Page 2: TDS
+  var p2 = el('div', 'qs-page'); p2.id = 'qs-page-2';
+  p2.innerHTML = '<div class="form-grid form-grid-3">'
+    + '<div class="form-group"><label class="form-label">TDS Applicable?</label><select class="form-select" id="qa-tds-applicable"><option value="yes">Yes</option><option value="no">No</option></select></div>'
+    + '<div class="form-group"><label class="form-label">TDS Section</label><select class="form-select" id="qa-tds-section" onchange="qaAutoTDSRate(this.value)"><option value="">-- Select --</option><option value="194C">194C - Contractor</option><option value="194J">194J - Professional</option><option value="194I">194I - Rent</option><option value="194A">194A - Interest</option><option value="194H">194H - Commission</option><option value="194M">194M - Contractor (Ind/HUF)</option></select></div>'
+    + '<div class="form-group"><label class="form-label">TDS Rate %</label><input type="number" class="form-input" id="qa-tds-rate" placeholder="e.g. 10" step="0.01"><span class="form-hint" id="qa-tds-hint"></span></div>'
+    + '</div>'
+    + '<div class="form-grid form-grid-2" style="margin-top:12px;">'
+    + '<div class="form-group"><label class="form-label">TDS Threshold (Rs.)</label><input type="number" class="form-input" id="qa-tds-threshold" placeholder="e.g. 30000"></div>'
+    + '<div class="form-group"><label class="form-label">RCM Applicable?</label><select class="form-select" id="qa-rcm"><option value="no">No</option><option value="yes">Yes</option></select></div>'
+    + '</div>';
+  container.appendChild(p2);
+
+  // Page 3: MSME + e-Invoice
+  var p3 = el('div', 'qs-page'); p3.id = 'qs-page-3';
+  p3.innerHTML = '<div style="margin-bottom:20px;">'
+    + '<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--text3);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;">MSME Registration</div>'
+    + '<div class="form-grid form-grid-3">'
+    + '<div class="form-group"><label class="form-label">MSME Registered?</label><select class="form-select" id="qa-msme" onchange="qaToggleMSME(this.value)"><option value="no">No</option><option value="yes">Yes</option></select></div>'
+    + '<div class="form-group" id="qa-msme-cat-grp" style="display:none;"><label class="form-label">Category</label><select class="form-select" id="qa-msme-cat"><option value="Micro">Micro</option><option value="Small">Small</option><option value="Medium">Medium</option></select></div>'
+    + '<div class="form-group" id="qa-udyam-grp" style="display:none;"><label class="form-label">Udyam No.</label><input type="text" class="form-input" id="qa-udyam" placeholder="UDYAM-XX-00-0000000"></div>'
+    + '</div></div>'
+    + '<div style="height:1px;background:var(--border);margin:16px 0;"></div>'
+    + '<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--text3);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;">e-Invoice Compliance</div>'
+    + '<div class="form-grid form-grid-3">'
+    + '<div class="form-group"><label class="form-label">e-Invoice Applicable?</label><select class="form-select" id="qa-einvoice"><option value="no">No</option><option value="yes">Yes</option></select></div>'
+    + '<div class="form-group"><label class="form-label">Turnover Slab</label><select class="form-select" id="qa-einvoice-slab"><option value="">-- Not Specified --</option><option value="5-10">Rs.5-10 Cr</option><option value="10-20">Rs.10-20 Cr</option><option value="20-50">Rs.20-50 Cr</option><option value="50-100">Rs.50-100 Cr</option><option value="100+">Above Rs.100 Cr</option></select></div>'
+    + '<div class="form-group"><label class="form-label">QR Verification</label><select class="form-select" id="qa-einvoice-qr"><option value="required">Required</option><option value="optional">Optional</option></select></div>'
+    + '</div>';
+  container.appendChild(p3);
+
+  // Page 4: Ledger + Terms
+  var p4 = el('div', 'qs-page'); p4.id = 'qs-page-4';
+  p4.innerHTML = '<div class="form-grid form-grid-2">'
+    + '<div class="form-group"><label class="form-label">Expense Ledger Name <span class="required">*</span></label><input type="text" class="form-input" id="qa-ledger" placeholder="e.g. Office Stationery and Printing"></div>'
+    + '<div class="form-group"><label class="form-label">Under Group</label><select class="form-select" id="qa-ledger-group"><option value="Indirect Expenses">Indirect Expenses</option><option value="Direct Expenses">Direct Expenses</option><option value="Purchase Accounts">Purchase Accounts</option><option value="Fixed Assets">Fixed Assets</option></select></div>'
+    + '</div>'
+    + '<div class="form-grid form-grid-3" style="margin-top:12px;">'
+    + '<div class="form-group"><label class="form-label">Credit Limit (Rs.)</label><input type="number" class="form-input" id="qa-credit-limit" placeholder="e.g. 100000"></div>'
+    + '<div class="form-group"><label class="form-label">Payment Terms (Days)</label><input type="number" class="form-input" id="qa-payment-days" placeholder="e.g. 30"></div>'
+    + '<div class="form-group"><label class="form-label">Payment Mode</label><select class="form-select" id="qa-payment-mode"><option value="Bank Transfer">Bank Transfer</option><option value="Cheque">Cheque</option><option value="UPI">UPI</option><option value="Cash">Cash</option></select></div>'
+    + '</div>';
+  container.appendChild(p4);
+
+  // Navigation buttons
+  var navRow = el('div', '', 'display:flex;justify-content:space-between;align-items:center;margin-top:24px;padding-top:16px;border-top:1px solid var(--border);');
+  var leftDiv = el('div', '', 'display:flex;gap:8px;');
+  var backBtn = document.createElement('button'); backBtn.className = 'btn btn-ghost'; backBtn.id = 'qa-back-btn'; backBtn.textContent = 'Back'; backBtn.style.display = 'none'; backBtn.onclick = qaBack;
+  var cancelBtn = document.createElement('button'); cancelBtn.className = 'btn btn-ghost'; cancelBtn.textContent = 'Cancel'; cancelBtn.onclick = resetScan;
+  leftDiv.appendChild(backBtn); leftDiv.appendChild(cancelBtn);
+
+  var rightDiv = el('div', '', 'display:flex;gap:8px;align-items:center;');
+  var stepIndicator = el('div', '', 'font-family:DM Mono,monospace;font-size:11px;color:var(--text3);');
+  stepIndicator.id = 'qa-step-indicator'; stepIndicator.textContent = 'Step 1 of 4';
+  var nextBtn = document.createElement('button'); nextBtn.className = 'btn btn-primary btn-lg'; nextBtn.id = 'qa-next-btn'; nextBtn.textContent = 'Next Step'; nextBtn.onclick = qaNext;
+  rightDiv.appendChild(stepIndicator); rightDiv.appendChild(nextBtn);
+  navRow.appendChild(leftDiv); navRow.appendChild(rightDiv);
+  container.appendChild(navRow);
+}
+
+function quickFetchGSTIN() {
+  var inv = currentScanInv;
+  if (!inv) return;
+  var mockData = {
+    '27AAACR3592Q1ZP': {name:'Raju Printers & Stationers', entity:'Proprietorship'},
+    '29AABCC4521M1Z3': {name:'CloudHost Technologies Pvt. Ltd.', entity:'Private Limited'},
+    '07AAHCS1234R1Z5': {name:'Sharma & Associates', entity:'Partnership'}
+  };
+  var data = mockData[inv.gstin] || {name:'Vendor ' + inv.gstin.substring(2,7), entity:'Private Limited'};
+  document.getElementById('qa-name').value = data.name;
+  document.getElementById('qa-entity').value = data.entity;
+  showToast('GSTIN data fetched');
+}
+
+function qaAutoTDSRate(section) {
+  var rates = {'194C':[1,30000],'194J':[10,30000],'194I':[10,240000],'194A':[10,40000],'194H':[5,15000],'194M':[5,5000000]};
+  if (rates[section]) {
+    document.getElementById('qa-tds-rate').value = rates[section][0];
+    document.getElementById('qa-tds-threshold').value = rates[section][1];
+    document.getElementById('qa-tds-hint').textContent = 'Standard rate for ' + section;
+    document.getElementById('qa-tds-hint').className = 'form-hint success';
+  }
+}
+
+function qaToggleMSME(val) {
+  var show = val === 'yes';
+  document.getElementById('qa-msme-cat-grp').style.display = show ? '' : 'none';
+  document.getElementById('qa-udyam-grp').style.display = show ? '' : 'none';
+  if (show && document.getElementById('qa-payment-days') && !document.getElementById('qa-payment-days').value) {
+    document.getElementById('qa-payment-days').value = '45';
+  }
+}
+
+function qaSetStep(step) {
+  quickAddStep = step;
+  for (var i = 1; i <= 4; i++) {
+    var page = document.getElementById('qs-page-' + i);
+    var tab = document.getElementById('qs-tab-' + i);
+    if (page) page.className = 'qs-page' + (i === step ? ' active' : '');
+    if (tab) {
+      if (i === step) tab.className = 'qs-step active';
+      else if (i < step) tab.className = 'qs-step done';
+      else tab.className = 'qs-step';
+    }
+  }
+  var backBtn = document.getElementById('qa-back-btn');
+  var nextBtn = document.getElementById('qa-next-btn');
+  var indicator = document.getElementById('qa-step-indicator');
+  if (backBtn) backBtn.style.display = step > 1 ? '' : 'none';
+  if (nextBtn) nextBtn.textContent = step === 4 ? 'Save Vendor & Process Bill' : 'Next Step';
+  if (indicator) indicator.textContent = 'Step ' + step + ' of 4';
+}
+
+function qaBack() { if (quickAddStep > 1) qaSetStep(quickAddStep - 1); }
+
+function qaNext() {
+  if (quickAddStep === 1) {
+    var name = document.getElementById('qa-name') && document.getElementById('qa-name').value.trim();
+    if (!name) { showToast('Please enter the vendor legal name', true); return; }
+    qaSetStep(2);
+  } else if (quickAddStep === 2) {
+    qaSetStep(3);
+  } else if (quickAddStep === 3) {
+    qaSetStep(4);
+  } else if (quickAddStep === 4) {
+    var ledger = document.getElementById('qa-ledger') && document.getElementById('qa-ledger').value.trim();
+    if (!ledger) { showToast('Please enter the expense ledger name', true); return; }
+    quickAddSaveAndProcess();
+  }
+}
+
+function quickAddSaveAndProcess() {
+  var inv = currentScanInv;
+  if (!inv) return;
+  var vendor = {
+    id: String(Date.now()),
+    name: document.getElementById('qa-name').value.trim(),
+    gstin: inv.gstin,
+    pan: inv.gstin.substring(2, 12),
+    entity: document.getElementById('qa-entity').value,
+    tdsApplicable: document.getElementById('qa-tds-applicable').value,
+    tdsSection: document.getElementById('qa-tds-section').value,
+    tdsRate: parseFloat(document.getElementById('qa-tds-rate').value) || 0,
+    tdsThreshold: parseFloat(document.getElementById('qa-tds-threshold').value) || 0,
+    rcm: document.getElementById('qa-rcm').value,
+    msme: document.getElementById('qa-msme').value === 'yes',
+    msmeCat: document.getElementById('qa-msme-cat') ? document.getElementById('qa-msme-cat').value : 'Micro',
+    udyam: document.getElementById('qa-udyam') ? document.getElementById('qa-udyam').value : '',
+    einvoice: document.getElementById('qa-einvoice').value,
+    einvoiceSlab: document.getElementById('qa-einvoice-slab').value,
+    einvoiceQR: document.getElementById('qa-einvoice-qr').value,
+    ledger: document.getElementById('qa-ledger').value.trim(),
+    ledgerGroup: document.getElementById('qa-ledger-group').value,
+    creditLimit: parseFloat(document.getElementById('qa-credit-limit').value) || 0,
+    paymentDays: parseInt(document.getElementById('qa-payment-days').value) || 30,
+    paymentMode: document.getElementById('qa-payment-mode').value,
+    bankAcc: '', bankIFSC: '', bankName: ''
+  };
+  vendors.push(vendor);
+  renderVendorTable();
+  updateStats();
+  // Hide quick-add, show scan result
+  document.getElementById('scan-quickadd-view').style.display = 'none';
+  document.getElementById('scan-quickadd-view').innerHTML = '';
+  currentScanVendor = vendor;
+  showProc('Processing bill with new vendor...');
+  setTimeout(function() {
+    hideProc();
+    buildScanResult(inv, vendor);
+    showToast('Vendor "' + vendor.name + '" saved and bill processed');
+  }, 800);
+}
+
+function resetScan() {
+  document.getElementById('scan-upload-view').style.display = 'block';
+  document.getElementById('scan-result-view').style.display = 'none';
+  document.getElementById('scan-result-view').innerHTML = '';
+  document.getElementById('scan-quickadd-view').style.display = 'none';
+  document.getElementById('scan-quickadd-view').innerHTML = '';
+  document.getElementById('scan-file-input').value = '';
+  currentScanInv = null; currentScanVendor = null;
+}
+
+function renderEntries() {
+  var list = document.getElementById('entries-list');
+  var empty = document.getElementById('entries-empty');
+  if (journalEntries.length === 0) { empty.style.display = 'block'; list.style.display = 'none'; return; }
+  empty.style.display = 'none'; list.style.display = 'flex';
+  list.innerHTML = '';
+  for (var i = 0; i < journalEntries.length; i++) {
+    var e = journalEntries[i];
+    var card = el('div','card');
+    var ch = el('div','card-header');
+    ch.innerHTML = '<div><div class="card-title">' + e.inv.invoice + ' - ' + e.vendor.name + '</div><div style="font-family:DM Mono,monospace;font-size:11px;color:var(--text3);margin-top:2px;">' + e.date + ' - ' + e.narration + '</div></div><div style="display:flex;gap:8px;align-items:center;"><span class="badge badge-gold">TDS Rs.' + e.tdsAmt.toLocaleString('en-IN') + '</span><span class="badge badge-green">Net Rs.' + e.netPayable.toLocaleString('en-IN') + '</span></div>';
+    card.appendChild(ch);
+    list.appendChild(card);
+  }
+  document.getElementById('recent-entries-body').innerHTML = list.innerHTML;
+}
+
+function renderTallyExport() {
+  var empty = document.getElementById('tally-empty');
+  var content = document.getElementById('tally-content');
+  if (journalEntries.length === 0) { empty.style.display = 'block'; content.style.display = 'none'; return; }
+  empty.style.display = 'none'; content.style.display = 'block';
+  var tl = document.getElementById('tally-list');
+  tl.innerHTML = '';
+  for (var i = 0; i < journalEntries.length; i++) {
+    var e = journalEntries[i];
+    var card = el('div','card');
+    var ch = el('div','card-header');
+    ch.innerHTML = '<div class="card-title">' + e.inv.invoice + ' - ' + e.vendor.name + '</div>';
+    card.appendChild(ch);
+    var cb = el('div','card-body');
+    var pre = document.createElement('pre');
+    pre.style.cssText = 'background:var(--surface2);border-radius:4px;padding:14px;font-family:DM Mono,monospace;font-size:11px;color:var(--text3);overflow-x:auto;line-height:1.8;';
+    pre.textContent = buildTallyXML(e.inv, e.vendor, e.tdsAmt, e.netPayable);
+    cb.appendChild(pre);
+    card.appendChild(cb);
+    tl.appendChild(card);
+  }
+}
+
+function buildTallyXML(inv, vendor, tdsAmt, netPayable) {
+  var tdsBlock = tdsAmt > 0 ? '\n        <ALLLEDGERENTRIES.LIST>\n          <LEDGERNAME>TDS Payable ' + vendor.tdsSection + '</LEDGERNAME>\n          <AMOUNT>' + tdsAmt + '</AMOUNT>\n        </ALLLEDGERENTRIES.LIST>' : '';
+  return '<?xml version="1.0" encoding="UTF-8"?>\n<ENVELOPE>\n  <HEADER><TALLYREQUEST>Import Data</TALLYREQUEST></HEADER>\n  <BODY><IMPORTDATA>\n    <REQUESTDESC><REPORTNAME>Vouchers</REPORTNAME></REQUESTDESC>\n    <REQUESTDATA><TALLYMESSAGE>\n      <VOUCHER VCHTYPE="Purchase" ACTION="Create">\n        <DATE>' + inv.date + '</DATE>\n        <VOUCHERNUMBER>' + inv.invoice + '</VOUCHERNUMBER>\n        <PARTYLEDGERNAME>' + vendor.name + '</PARTYLEDGERNAME>\n        <ALLLEDGERENTRIES.LIST>\n          <LEDGERNAME>' + vendor.ledger + '</LEDGERNAME>\n          <AMOUNT>-' + inv.subTotal + '</AMOUNT>\n        </ALLLEDGERENTRIES.LIST>\n        <ALLLEDGERENTRIES.LIST>\n          <LEDGERNAME>CGST Input</LEDGERNAME>\n          <AMOUNT>-' + inv.cgst + '</AMOUNT>\n        </ALLLEDGERENTRIES.LIST>\n        <ALLLEDGERENTRIES.LIST>\n          <LEDGERNAME>SGST Input</LEDGERNAME>\n          <AMOUNT>-' + inv.sgst + '</AMOUNT>\n        </ALLLEDGERENTRIES.LIST>' + tdsBlock + '\n        <ALLLEDGERENTRIES.LIST>\n          <LEDGERNAME>' + vendor.name + '</LEDGERNAME>\n          <AMOUNT>' + netPayable + '</AMOUNT>\n        </ALLLEDGERENTRIES.LIST>\n      </VOUCHER>\n    </TALLYMESSAGE></REQUESTDATA>\n  </IMPORTDATA></BODY>\n</ENVELOPE>';
+}
+
+function downloadEntryXML(inv, vendor, tdsAmt, netPayable) {
+  var xml = buildTallyXML(inv, vendor, tdsAmt, netPayable);
+  var blob = new Blob([xml], {type:'text/xml'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = 'tally_' + inv.invoice.replace(/\//g,'_') + '.xml'; a.click();
+  showToast('Tally XML downloaded');
+}
+
+function downloadAllXML() {
+  if (journalEntries.length === 0) return;
+  var all = '';
+  for (var i = 0; i < journalEntries.length; i++) {
+    var e = journalEntries[i];
+    all += buildTallyXML(e.inv, e.vendor, e.tdsAmt, e.netPayable) + '\n\n';
+  }
+  var blob = new Blob([all], {type:'text/xml'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a'); a.href = url; a.download = 'tally_batch.xml'; a.click();
+  showToast('Batch XML downloaded');
+}
+
+function downloadAllCSV() {
+  if (journalEntries.length === 0) return;
+  var rows = ['Invoice,Date,Vendor,GSTIN,Ledger,Base Amt,CGST,SGST,TDS,Net Payable,Grand Total'];
+  for (var i = 0; i < journalEntries.length; i++) {
+    var e = journalEntries[i];
+    rows.push(e.inv.invoice + ',' + e.inv.date + ',"' + e.vendor.name + '",' + e.vendor.gstin + ',"' + e.vendor.ledger + '",' + e.inv.subTotal + ',' + e.inv.cgst + ',' + e.inv.sgst + ',' + e.tdsAmt + ',' + e.netPayable + ',' + e.inv.grandTotal);
+  }
+  var blob = new Blob([rows.join('\n')], {type:'text/csv'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a'); a.href = url; a.download = 'journal_entries.csv'; a.click();
+  showToast('CSV exported');
+}
+
+// ── API Key Management ────────────────────────────────────
+function selectProvider(p) {
+  var gc = document.getElementById('provider-gemini-card');
+  var cc = document.getElementById('provider-claude-card');
+  var gf = document.getElementById('gemini-fields');
+  var cf = document.getElementById('claude-fields');
+  if (p === 'gemini') {
+    gc.style.border = '2px solid var(--accent)'; gc.style.background = 'var(--accent-dim)';
+    gc.querySelector('div').style.color = 'var(--accent)';
+    cc.style.border = '2px solid var(--border2)'; cc.style.background = '';
+    cc.querySelector('div').style.color = 'var(--text2)';
+    gf.style.display = ''; cf.style.display = 'none';
+  } else {
+    cc.style.border = '2px solid var(--blue)'; cc.style.background = 'var(--blue-dim)';
+    cc.querySelector('div').style.color = 'var(--blue)';
+    gc.style.border = '2px solid var(--border2)'; gc.style.background = '';
+    gc.querySelector('div').style.color = 'var(--text2)';
+    cf.style.display = ''; gf.style.display = 'none';
+  }
+}
+
+function validateGeminiKey(val) {
+  var hint = document.getElementById('gemini-key-hint');
+  if (val.indexOf('AIzaSy') === 0) { hint.textContent = 'Valid format'; hint.className = 'form-hint success'; }
+  else { hint.textContent = 'Starts with AIzaSy'; hint.className = 'form-hint'; }
+}
+
+function validateClaudeKey(val) {
+  var hint = document.getElementById('claude-key-hint');
+  if (val.indexOf('sk-ant-') === 0) { hint.textContent = 'Valid format'; hint.className = 'form-hint success'; }
+  else { hint.textContent = 'Starts with sk-ant-'; hint.className = 'form-hint'; }
+}
+
+function openAPISettings() {
+  var provider = localStorage.getItem('ai_provider') || 'gemini';
+  var gKey = localStorage.getItem('gemini_api_key') || '';
+  var cKey = localStorage.getItem('claude_api_key') || '';
+  var gModel = localStorage.getItem('gemini_model') || 'gemini-2.0-flash';
+  var cModel = localStorage.getItem('claude_model') || 'claude-haiku-4-5-20251001';
+
+  document.getElementById('gemini-key-input').value = gKey;
+  document.getElementById('claude-key-input').value = cKey;
+  document.getElementById('gemini-model-select').value = gModel;
+  document.getElementById('claude-model-select').value = cModel;
+
+  var statusEl = document.getElementById('api-key-status');
+  if (provider === 'gemini' && gKey) statusEl.textContent = 'Active: Gemini - ' + gKey.substring(0,10) + '...';
+  else if (provider === 'claude' && cKey) statusEl.textContent = 'Active: Claude - ' + cKey.substring(0,12) + '...';
+  else statusEl.textContent = 'No key saved yet';
+
+  selectProvider(provider);
+  document.getElementById('add-vendor-modal').classList.remove('show');
+  document.getElementById('api-key-modal').classList.add('show');
+}
+
+function saveAPIKey() {
+  var isGemini = document.getElementById('gemini-fields').style.display !== 'none';
+  if (isGemini) {
+    var key = document.getElementById('gemini-key-input').value.trim();
+    var model = document.getElementById('gemini-model-select').value;
+    if (!key || key.indexOf('AIzaSy') !== 0) {
+      document.getElementById('gemini-key-hint').textContent = 'Key must start with AIzaSy';
+      document.getElementById('gemini-key-hint').className = 'form-hint error';
+      return;
+    }
+    localStorage.setItem('ai_provider', 'gemini');
+    localStorage.setItem('gemini_api_key', key);
+    localStorage.setItem('gemini_model', model);
+  } else {
+    var key = document.getElementById('claude-key-input').value.trim();
+    var model = document.getElementById('claude-model-select').value;
+    if (!key || key.indexOf('sk-ant-') !== 0) {
+      document.getElementById('claude-key-hint').textContent = 'Key must start with sk-ant-';
+      document.getElementById('claude-key-hint').className = 'form-hint error';
+      return;
+    }
+    localStorage.setItem('ai_provider', 'claude');
+    localStorage.setItem('claude_api_key', key);
+    localStorage.setItem('claude_model', model);
+  }
+  closeModal('api-key-modal');
+  updateAIStatusBtn();
+  showToast('AI enabled and saved permanently in this browser');
+}
+
+function clearAPIKey() {
+  localStorage.removeItem('ai_provider');
+  localStorage.removeItem('gemini_api_key');
+  localStorage.removeItem('gemini_model');
+  localStorage.removeItem('claude_api_key');
+  localStorage.removeItem('claude_model');
+  document.getElementById('gemini-key-input').value = '';
+  document.getElementById('claude-key-input').value = '';
+  document.getElementById('api-key-status').textContent = 'All keys cleared';
+  updateAIStatusBtn();
+  showToast('API keys cleared');
+}
+
+function updateAIStatusBtn() {
+  var btn = document.getElementById('ai-settings-btn');
+  if (!btn) return;
+  var provider = localStorage.getItem('ai_provider');
+  var gKey = localStorage.getItem('gemini_api_key');
+  var cKey = localStorage.getItem('claude_api_key');
+  var active = (provider === 'gemini' && gKey) || (provider === 'claude' && cKey);
+  var sidebarEl = document.getElementById('sidebar-ai-status');
+  if (active) {
+    btn.title = (provider === 'gemini' ? 'Gemini' : 'Claude') + ' AI active - click to change';
+    btn.className = 'btn btn-ghost btn-sm ai-on';
+    if (sidebarEl) { sidebarEl.textContent = (provider === 'gemini' ? 'Gemini' : 'Claude') + ': Active'; sidebarEl.style.color = 'var(--accent)'; }
+  } else {
+    btn.title = 'AI not configured - click to set up';
+    btn.className = 'btn btn-ghost btn-sm';
+    if (sidebarEl) { sidebarEl.textContent = 'AI: Tap to set up (free)'; sidebarEl.style.color = 'var(--amber)'; }
+  }
+}
+
+function updateStats() {
+  document.getElementById('stat-vendors').textContent = vendors.length;
+  document.getElementById('stat-bills').textContent = journalEntries.length;
+  var totalTDS = 0, totalGST = 0;
+  for (var i = 0; i < journalEntries.length; i++) { totalTDS += journalEntries[i].tdsAmt; totalGST += journalEntries[i].inv.cgst + journalEntries[i].inv.sgst; }
+  document.getElementById('stat-tds').textContent = 'Rs.' + totalTDS.toLocaleString('en-IN');
+  document.getElementById('stat-gst').textContent = 'Rs.' + totalGST.toLocaleString('en-IN');
+  document.getElementById('vendor-count-badge').textContent = vendors.length;
+  document.getElementById('entry-count-badge').textContent = journalEntries.length;
+}
+
+function showProc(msg) { document.getElementById('proc-text').textContent = msg; document.getElementById('proc-overlay').classList.add('show'); }
+function updateProcText(msg) { document.getElementById('proc-text').textContent = msg; }
+function hideProc() { document.getElementById('proc-overlay').classList.remove('show'); }
+
+function showToast(msg, isError) {
+  var t = document.getElementById('toast');
+  document.getElementById('toast-msg').textContent = msg;
+  document.getElementById('toast-icon').textContent = isError ? 'x' : 'v';
+  t.className = 'toast' + (isError ? ' error' : '');
+  t.classList.add('show');
+  setTimeout(function() { t.classList.remove('show'); }, 3200);
+}
+
+// Drag and drop
+var dz = document.getElementById('scan-file-input');
+updateAIStatusBtn();
+var dropArea = document.querySelector('.drop-zone');
+if (dropArea) {
+  dropArea.addEventListener('dragover', function(e) { e.preventDefault(); dropArea.style.borderColor = '#4ade8060'; });
+  dropArea.addEventListener('dragleave', function() { dropArea.style.borderColor = ''; });
+  dropArea.addEventListener('drop', function(e) { e.preventDefault(); dropArea.style.borderColor = ''; runDemoScan(0); });
+}
+</script>
+</body>
+</html>
