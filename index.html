@@ -202,7 +202,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   <div class="sidebar-footer">
     FY 2024-25 &nbsp;|&nbsp; Tally Prime Ready<br>
     <span style="color:var(--accent)">&#9679; System Active</span><br>
-    <span style="color:var(--accent);">Built-in extraction</span>
+    <span id="sidebar-ai-status" style="cursor:pointer;color:var(--accent);" onclick="openAPISettings()">&#9881; AI: Click to configure</span>
   </div>
 </div>
 
@@ -215,7 +215,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     </div>
     <div class="topbar-actions">
       <button class="btn btn-secondary btn-sm" onclick="showPanel('vendors'); openAddVendor()">+ Add Vendor</button>
-      <span style="font-size:11px;font-family:'DM Mono',monospace;color:var(--accent);">Built-in OCR</span>
+      <button class="btn btn-ghost btn-sm" id="ai-settings-btn" onclick="openAPISettings()" title="AI Settings">&#9881; AI Settings</button>
       <button class="btn btn-primary btn-sm" onclick="showPanel('scan')">Scan Bill</button>
     </div>
   </div>
@@ -297,35 +297,24 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   <!-- SCAN BILL -->
   <div class="panel" id="panel-scan">
     <div id="scan-upload-view">
-      <div style="max-width:680px;margin:0 auto;">
-
-        <!-- AI Assistant Banner -->
-        <div style="background:linear-gradient(135deg,#0d1f14,#111d1a);border:1px solid #4ade8030;border-radius:10px;padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;gap:14px;">
-          <div style="font-size:28px;">&#129302;</div>
-          <div style="flex:1;">
-            <div style="font-size:13px;font-weight:700;color:var(--accent);margin-bottom:3px;">Claude AI — Built-in Bill Assistant</div>
-            <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;line-height:1.7;">Reads your bills with full AI understanding. No API key needed — Claude runs directly inside this app.<br>Upload one bill or many at once. Ask questions about any bill in plain English.</div>
-          </div>
-          <div id="ai-status-dot" style="width:8px;height:8px;border-radius:50%;background:var(--accent);flex-shrink:0;box-shadow:0 0 6px var(--accent);"></div>
+      <!-- AI Banner -->
+      <div style="max-width:600px;margin:0 auto 16px;background:linear-gradient(135deg,#0d1a10,#111d14);border:1px solid #4ade8030;border-radius:10px;padding:14px 18px;display:flex;align-items:center;gap:12px;">
+        <div style="font-size:24px;">&#129302;</div>
+        <div style="flex:1;">
+          <div style="font-size:13px;font-weight:700;color:var(--accent);margin-bottom:2px;">Claude AI &mdash; Built-in Bill Assistant</div>
+          <div style="font-size:11px;color:var(--text3);font-family:DM Mono,monospace;line-height:1.7;">Reads bills with full AI understanding. No API key needed.<br>Upload one or many bills at once. Ask questions in plain English.</div>
         </div>
-
-        <!-- Drop zone - multiple files -->
-        <div class="drop-zone" id="main-drop-zone" onclick="document.getElementById('scan-file-input').click()">
+        <div style="width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 6px var(--accent);flex-shrink:0;"></div>
+      </div>
+      <!-- File queue shown after selection -->
+      <div id="file-queue" style="display:none;max-width:600px;margin:0 auto 16px;"></div>
+      <div style="max-width:600px;margin:0 auto;">
+        <div class="drop-zone" onclick="document.getElementById('scan-file-input').click()">
           <div style="font-size:40px;margin-bottom:12px;opacity:0.6;">&#128196;</div>
-          <div class="drop-zone-title">Upload Bills / Invoices</div>
-          <div class="drop-zone-sub" style="margin-top:8px;">
-            Claude AI extracts everything automatically<br>
-            <span style="color:#4ade8080;">PDF &nbsp;|&nbsp; JPG &nbsp;|&nbsp; PNG &nbsp;&nbsp;&#8212;&nbsp;&nbsp; Select one or multiple files</span>
-          </div>
+          <div class="drop-zone-title">Upload Bill / Invoice PDF</div>
+          <div class="drop-zone-sub" style="margin-top:8px;">Built-in extraction - no API key needed<br>PDF text extraction + OCR for images</div>
           <input type="file" id="scan-file-input" style="display:none;" accept=".pdf,image/*" multiple onchange="handleBillUpload(event)">
         </div>
-
-        <!-- File queue (shown when files selected) -->
-        <div id="file-queue" style="display:none;margin-top:16px;"></div>
-
-        <!-- Chat with bills (shown after scan) -->
-        <div id="bill-chat-box" style="display:none;margin-top:16px;"></div>
-
         <div style="text-align:center;margin:20px 0;color:var(--text3);font-size:12px;font-family:'DM Mono',monospace;">-- or try a demo bill --</div>
         <div class="demo-cards">
           <div class="demo-card" onclick="runDemoScan(0)">
@@ -339,6 +328,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         </div>
       </div>
     </div>
+    <div id="bill-chat-box" style="display:none;max-width:600px;margin:0 auto 20px;"></div>
     <div id="scan-result-view" style="display:none;max-width:900px;"></div>
     <div id="scan-quickadd-view" style="display:none;max-width:700px;"></div>
   </div>
@@ -347,18 +337,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   <div class="panel" id="panel-entries">
     <div id="entries-empty" class="empty-state"><div class="empty-icon">&#128219;</div><div class="empty-title">No journal entries yet</div><div class="empty-text">Scan bills to generate entries</div></div>
     <div id="entries-list" style="display:none;flex-direction:column;gap:16px;"></div>
-  </div>
-
-  <!-- MEMORY PANEL -->
-  <div class="panel" id="panel-memory">
-    <div style="margin-bottom:16px;">
-      <div style="font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:12px;">
-        Every time you correct an extracted value and post an entry, the app remembers the correction.
-        Next time you scan a bill from the same vendor, the corrections are applied automatically.
-      </div>
-      <button class="btn btn-secondary btn-sm" onclick="renderMemoryPanel()">&#8635; Refresh</button>
-    </div>
-    <div id="memory-list"></div>
   </div>
 
   <!-- TALLY EXPORT -->
@@ -371,6 +349,18 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       </div>
       <div id="tally-list" style="display:flex;flex-direction:column;gap:12px;"></div>
     </div>
+  </div>
+
+  <!-- MEMORY PANEL -->
+  <div class="panel" id="panel-memory">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <div style="font-size:13px;color:var(--text2);line-height:1.7;max-width:500px;">
+        Every time you correct an extracted value and post an entry, the app remembers it.<br>
+        Next scan from the same vendor auto-applies all corrections.
+      </div>
+      <button class="btn btn-secondary btn-sm" onclick="renderMemoryPanel()">&#8635; Refresh</button>
+    </div>
+    <div id="memory-list"></div>
   </div>
 </div>
 </div>
@@ -675,22 +665,26 @@ var currentScanVendor = null;
 
 // ── Navigation ─────────────────────────────────────────────
 function showPanel(id) {
-  var panels = ['dashboard','vendors','scan','entries','tally'];
+  var panels = ['dashboard','vendors','scan','memory','entries','tally'];
   for (var i = 0; i < panels.length; i++) {
-    document.getElementById('panel-' + panels[i]).classList.remove('active');
-    document.getElementById('nav-' + panels[i]).classList.remove('active');
+    var pe = document.getElementById('panel-' + panels[i]);
+    var ne = document.getElementById('nav-' + panels[i]);
+    if (pe) pe.classList.remove('active');
+    if (ne) ne.classList.remove('active');
   }
-  document.getElementById('panel-' + id).classList.add('active');
-  document.getElementById('nav-' + id).classList.add('active');
+  var activePanel = document.getElementById('panel-' + id);
+  var activeNav = document.getElementById('nav-' + id);
+  if (activePanel) activePanel.classList.add('active');
+  if (activeNav) activeNav.classList.add('active');
   var titles = {
     dashboard: ['Dashboard', 'Overview - FY 2024-25'],
     vendors: ['Vendor Master', vendors.length + ' vendor(s) registered'],
     scan: ['Scan Bill', 'PDF to Auto Journal Entry'],
     entries: ['Journal Entries', journalEntries.length + ' entries posted'],
-    tally: ['Tally Export', 'Export XML for Tally Prime']
+    tally: ['Tally Export', 'Export XML for Tally Prime'],
+    memory: ['Correction Memory', 'Auto-learning from your corrections']
   };
-  document.getElementById('page-title').textContent = titles[id][0];
-  document.getElementById('page-subtitle').textContent = titles[id][1];
+  if (titles[id]) { document.getElementById('page-title').textContent = titles[id][0]; document.getElementById('page-subtitle').textContent = titles[id][1]; }
 }
 
 // ── Vendor Modal ───────────────────────────────────────────
@@ -933,31 +927,6 @@ var demoInvoices = [
   {gstin:'29AABCC4521M1Z3',invoice:'CHT/INV/25-26/0041',date:'01 Mar 2025',lineItems:[{desc:'Cloud Server Hosting (Annual)',hsn:'998315',qty:1,rate:48000,amt:48000,gstRate:18},{desc:'SSL Certificate Renewal',hsn:'998315',qty:1,rate:3000,amt:3000,gstRate:18},{desc:'Domain Registration (3 domains)',hsn:'998315',qty:3,rate:1200,amt:3600,gstRate:18}],subTotal:54600,cgst:4914,sgst:4914,grandTotal:64428,irn:'a7f3c8e2b1d94f5a6c0e8b3d2f1a9c7e5b0d4f8a2c6e0b4d8f2a6c0e4b8d2f6',qrVerified:true}
 ];
 
-// ── AI Extraction Engine (Claude API) ─────────────────────
-// Uses the Anthropic API built into claude.ai — no key needed.
-// Supports multiple files, PDF and images.
-// Falls back to built-in parser if AI unavailable.
-
-var AI_PROMPT = 'You are an Indian GST accounting assistant. Extract all data from this invoice/bill.'
-  + ' Return ONLY a raw JSON object with NO markdown, NO code fences, NO explanation.'
-  + ' JSON structure: {"gstin":"","invoice":"","date":"","vendorName":"","subTotal":0,"cgst":0,"sgst":0,"igst":0,"grandTotal":0,'
-  + '"lineItems":[{"desc":"","hsn":"","qty":1,"rate":0,"amt":0,"gstRate":0}],"irn":null,"qrVerified":false}'
-  + ' Rules:'
-  + ' gstin = SUPPLIER gstin (15 chars, first one on bill).'
-  + ' date = DD Mon YYYY format (e.g. 04 Apr 2024).'
-  + ' All amounts as plain numbers without commas.'
-  + ' subTotal = taxable value before GST.'
-  + ' cgst and sgst = each tax component separately.'
-  + ' igst = inter-state tax if applicable (then cgst=sgst=0).'
-  + ' irn = the 64-character hash code if e-invoice, else null.'
-  + ' qrVerified = true only if QR code present on bill.'
-  + ' Extract EVERY line item with HSN/SAC code and GST rate %.'
-  + ' If bill has multiple pages extract from all pages.';
-
-var fileQueue = [];      // files waiting to process
-var processedBills = []; // results from AI for chat context
-var chatHistory = [];    // conversation with bill assistant
-
 function handleBillUpload(e) {
   var files = Array.from(e.target.files || []);
   if (!files.length) return;
@@ -966,72 +935,97 @@ function handleBillUpload(e) {
   document.getElementById('scan-file-input').value = '';
 }
 
+function runDemoScan(idx) {
+  if (vendors.length === 0) loadDemoVendors();
+  processBillData(demoInvoices[idx]);
+}
+
+// ── File Queue State ────────────────────────────────────────
+var fileQueue = [];
+var processedBills = [];
+var chatHistory = [];
+var multiBillResults = [];
+
+// ── AI Extraction Prompt ────────────────────────────────────
+var AI_PROMPT = 'You are an Indian GST accounting assistant. Extract all data from this invoice/bill.'
+  + ' Return ONLY a raw JSON object - no markdown, no code fences, no explanation.'
+  + ' JSON: {"gstin":"","invoice":"","date":"","vendorName":"","subTotal":0,"cgst":0,"sgst":0,"igst":0,"grandTotal":0,'
+  + '"lineItems":[{"desc":"","hsn":"","qty":1,"rate":0,"amt":0,"gstRate":0}],"irn":null,"qrVerified":false}'
+  + ' Rules: gstin=supplier GSTIN (15 chars). date=DD Mon YYYY (e.g. 04 Apr 2024).'
+  + ' All amounts as plain numbers without commas. subTotal=taxable value before GST.'
+  + ' cgst/sgst=each component separately. igst=interstate tax (cgst=sgst=0 if igst).'
+  + ' irn=64-char hash if e-invoice else null. Extract every line item with HSN and GST%.';
+
+// ── Render file queue UI ────────────────────────────────────
 function renderFileQueue(files) {
   var box = document.getElementById('file-queue');
+  if (!box) return;
   box.innerHTML = '';
   box.style.display = 'block';
 
-  var header = el('div','','display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;');
+  var header = el('div','','display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;');
   header.innerHTML = '<div style="font-size:13px;font-weight:600;color:var(--text);">'
-    + files.length + ' file' + (files.length > 1 ? 's' : '') + ' selected</div>'
-    + '<div style="display:flex;gap:8px;">'
-    + '<button class="btn btn-primary btn-sm" onclick="processAllFiles()">&#129302; Extract with AI</button>'
-    + '<button class="btn btn-ghost btn-sm" onclick="document.getElementById(\'scan-file-input\').click()">+ Add more</button>'
-    + '</div>';
+    + files.length + ' file' + (files.length > 1 ? 's' : '') + ' ready</div>'
+    + '<button class="btn btn-primary btn-sm" id="extract-btn" onclick="processAllFiles()">&#129302; Extract with Claude AI</button>';
   box.appendChild(header);
 
   var list = el('div','','display:flex;flex-direction:column;gap:6px;');
   files.forEach(function(file, idx) {
     var row = el('div','','background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px 14px;display:flex;align-items:center;gap:10px;');
+    row.id = 'file-row-' + idx;
     var icon = file.type === 'application/pdf' ? '&#128196;' : '&#128247;';
     var size = (file.size / 1024).toFixed(0) + ' KB';
-    row.innerHTML = '<span style="font-size:18px;">' + icon + '</span>'
+    row.innerHTML = '<span style="font-size:16px;">' + icon + '</span>'
       + '<div style="flex:1;min-width:0;">'
-      + '<div style="font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + file.name + '</div>'
-      + '<div style="font-size:10px;color:var(--text3);font-family:DM Mono,monospace;">' + size + ' &nbsp;|&nbsp; ' + file.type + '</div>'
+      + '<div style="font-size:12px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + file.name + '</div>'
+      + '<div style="font-size:10px;color:var(--text3);font-family:DM Mono,monospace;">' + size + '</div>'
       + '</div>'
-      + '<span id="file-status-' + idx + '" style="font-size:11px;color:var(--text3);font-family:DM Mono,monospace;">pending</span>'
-      + '<button class="btn btn-ghost btn-sm" onclick="fileQueue.splice(' + idx + ',1);renderFileQueue(fileQueue);" style="padding:3px 8px;font-size:11px;">&#10005;</button>';
-    row.id = 'file-row-' + idx;
+      + '<span id="fstatus-' + idx + '" style="font-size:11px;color:var(--text3);font-family:DM Mono,monospace;flex-shrink:0;">pending</span>';
     list.appendChild(row);
   });
   box.appendChild(list);
 }
 
-function setFileStatus(idx, status, color) {
-  var el2 = document.getElementById('file-status-' + idx);
-  if (el2) { el2.textContent = status; el2.style.color = color || 'var(--text3)'; }
-  var row = document.getElementById('file-row-' + idx);
-  if (row && color === 'var(--accent)') row.style.borderColor = '#4ade8030';
-  if (row && color === 'var(--red)') row.style.borderColor = '#f8717130';
+function setFileStatus(idx, text, color) {
+  var s = document.getElementById('fstatus-' + idx);
+  if (s) { s.textContent = text; s.style.color = color || 'var(--text3)'; }
 }
 
+// ── Process all queued files with Claude AI ─────────────────
 async function processAllFiles() {
   if (!fileQueue.length) return;
-  var files = fileQueue.slice();
-
-  // Hide queue buttons during processing
-  document.querySelector('#file-queue .btn-primary').disabled = true;
-  document.querySelector('#file-queue .btn-primary').textContent = 'Processing...';
-
+  var btn = document.getElementById('extract-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Processing...'; }
   processedBills = [];
+  chatHistory = [];
 
-  for (var i = 0; i < files.length; i++) {
+  for (var i = 0; i < fileQueue.length; i++) {
     setFileStatus(i, 'reading...', 'var(--amber)');
     try {
-      var base64 = await fileToBase64(files[i]);
-      setFileStatus(i, 'AI reading...', 'var(--amber)');
-      var inv = await extractWithAI(files[i], base64);
+      var base64 = await fileToBase64(fileQueue[i]);
+      var inv;
+      try {
+        setFileStatus(i, 'AI reading...', 'var(--amber)');
+        inv = await extractWithClaudeAI(fileQueue[i], base64);
+      } catch(aiErr) {
+        if (aiErr.message === 'NO_KEY') {
+          // No API key - use built-in PDF.js + parser
+          setFileStatus(i, 'Parsing...', 'var(--amber)');
+          inv = await extractWithBuiltinParser(fileQueue[i], base64);
+        } else {
+          throw aiErr;
+        }
+      }
       inv = cmApply(inv);
-      processedBills.push({file: files[i].name, inv: inv});
+      processedBills.push({ file: fileQueue[i].name, inv: inv });
       setFileStatus(i, 'done ✓', 'var(--accent)');
     } catch(err) {
-      setFileStatus(i, 'error: ' + err.message.substring(0,30), 'var(--red)');
-      processedBills.push({file: files[i].name, inv: null, error: err.message});
+      var msg = err.message || 'Failed';
+      setFileStatus(i, msg.substring(0, 28), 'var(--red)');
+      processedBills.push({ file: fileQueue[i].name, inv: null, error: msg });
     }
   }
 
-  // Show results
   showBillResults(processedBills);
   showBillChat(processedBills);
 }
@@ -1045,72 +1039,222 @@ function fileToBase64(file) {
   });
 }
 
-async function extractWithAI(file, base64) {
+// Fallback: built-in PDF.js + parseInvoiceText (no API key needed)
+function extractWithBuiltinParser(file, base64) {
+  return new Promise(function(resolve, reject) {
+    var isPDF = file.type === 'application/pdf';
+    if (isPDF) {
+      var binary = atob(base64);
+      var bytes = new Uint8Array(binary.length);
+      for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      var loadPDFjs = function(cb) {
+        if (typeof pdfjsLib !== 'undefined') { cb(); return; }
+        var s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+        s.onload = function() {
+          pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+          cb();
+        };
+        s.onerror = function() { reject(new Error('Could not load PDF reader')); };
+        document.head.appendChild(s);
+      };
+      loadPDFjs(function() {
+        pdfjsLib.getDocument({ data: bytes }).promise.then(function(pdf) {
+          var pages = [];
+          for (var p = 1; p <= pdf.numPages; p++) pages.push(p);
+          var texts = [];
+          var next = function(idx) {
+            if (idx >= pages.length) {
+              var fullText = texts.join(' ');
+              var inv = parseInvoiceText(fullText);
+              inv.extractionMethod = 'Built-in Parser';
+              resolve(inv);
+              return;
+            }
+            pdf.getPage(pages[idx]).then(function(page) {
+              page.getTextContent().then(function(tc) {
+                texts.push(tc.items.map(function(t){ return t.str; }).join(' '));
+                next(idx + 1);
+              });
+            });
+          };
+          next(0);
+        }).catch(reject);
+      });
+    } else {
+      // Image - use Tesseract
+      var loadTess = function(cb) {
+        if (typeof Tesseract !== 'undefined') { cb(); return; }
+        var s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.0.4/tesseract.min.js';
+        s.onload = cb;
+        s.onerror = function() { reject(new Error('Could not load OCR')); };
+        document.head.appendChild(s);
+      };
+      loadTess(function() {
+        Tesseract.recognize(file, 'eng').then(function(result) {
+          var inv = parseInvoiceText(result.data.text);
+          inv.extractionMethod = 'OCR';
+          resolve(inv);
+        }).catch(reject);
+      });
+    }
+  });
+}
+
+// ── Call Claude API directly (built into claude.ai) ─────────
+async function extractWithClaudeAI(file, base64) {
+  var provider = localStorage.getItem('ai_provider') || 'gemini';
+  var geminiKey = localStorage.getItem('gemini_api_key') || '';
+  var claudeKey = localStorage.getItem('claude_api_key') || '';
+  if (provider === 'gemini' && geminiKey) return await extractWithGeminiAPI(file, base64, geminiKey);
+  if (provider === 'claude' && claudeKey) return await extractWithClaudeAPI(file, base64, claudeKey);
+  throw new Error('NO_KEY');
+}
+
+async function extractWithGeminiAPI(file, base64, apiKey) {
+  var isPDF = file.type === 'application/pdf';
+  var mime = isPDF ? 'application/pdf' : (file.type || 'image/jpeg');
+  var model = localStorage.getItem('gemini_model') || 'gemini-2.0-flash';
+  var url = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + apiKey;
+  var part = { inline_data: { mime_type: mime, data: base64 } };
+  var resp = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ contents: [{ parts: [part, { text: AI_PROMPT }] }] })
+  });
+  var data = await resp.json();
+  if (data.error) throw new Error('Gemini: ' + data.error.message);
+  var raw = '';
+  try { raw = data.candidates[0].content.parts[0].text; } catch(e) { throw new Error('Gemini: no response'); }
+  return parseAIResponse(raw, 'Gemini AI');
+}
+
+async function extractWithClaudeAPI(file, base64, apiKey) {
+  var isPDF = file.type === 'application/pdf';
+  var mime = isPDF ? 'application/pdf' : (file.type || 'image/jpeg');
+  var docBlock = isPDF
+    ? { type:'document', source:{ type:'base64', media_type:'application/pdf', data:base64 } }
+    : { type:'image', source:{ type:'base64', media_type:mime, data:base64 } };
+  var resp = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type':'application/json', 'anthropic-version':'2023-06-01', 'x-api-key': apiKey },
+    body: JSON.stringify({ model:'claude-opus-4-6', max_tokens:1500, messages:[{ role:'user', content:[docBlock, { type:'text', text:AI_PROMPT }] }] })
+  });
+  var data = await resp.json();
+  if (data.error) throw new Error('Claude: ' + data.error.message);
+  var raw = '';
+  for (var i = 0; i < (data.content||[]).length; i++) { if (data.content[i].type==='text') { raw = data.content[i].text; break; } }
+  return parseAIResponse(raw, 'Claude AI');
+}
+
+function parseAIResponse(raw, source) {
+  raw = (raw||'').trim().replace(/^```[a-z]*/m, '').replace(/```$/, '').trim();
+  var s = raw.indexOf('{'), e = raw.lastIndexOf('}');
+  if (s >= 0 && e > s) raw = raw.substring(s, e+1);
+  var ext = JSON.parse(raw);
+  return {
+    gstin: String(ext.gstin||''), invoice: String(ext.invoice||'Unknown'),
+    date: String(ext.date||''), vendorName: String(ext.vendorName||''),
+    subTotal: Number(ext.subTotal)||0, cgst: Number(ext.cgst)||0,
+    sgst: Number(ext.sgst)||0, igst: Number(ext.igst)||0,
+    grandTotal: Number(ext.grandTotal)||0,
+    lineItems: Array.isArray(ext.lineItems) ? ext.lineItems : [],
+    irn: ext.irn||null, qrVerified: !!ext.qrVerified,
+    aiExtracted: true, extractionMethod: source
+  };
+}
+
+
+async function extractWithGeminiAPI(file, base64, apiKey) {
+  var isPDF = file.type === 'application/pdf';
+  var mime = isPDF ? 'application/pdf' : (file.type || 'image/jpeg');
+  var model = localStorage.getItem('gemini_model') || 'gemini-2.0-flash';
+  var url = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + apiKey;
+
+  var part = isPDF
+    ? { inline_data: { mime_type: 'application/pdf', data: base64 } }
+    : { inline_data: { mime_type: mime, data: base64 } };
+
+  var body = { contents: [{ parts: [part, { text: AI_PROMPT }] }] };
+
+  var resp = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+
+  var data = await resp.json();
+  if (data.error) throw new Error('Gemini: ' + data.error.message);
+
+  var raw = '';
+  try { raw = data.candidates[0].content.parts[0].text; } catch(e) { throw new Error('Gemini: no response'); }
+
+  return parseAIResponse(raw, 'Gemini AI');
+}
+
+async function extractWithClaudeAPI(file, base64, apiKey) {
   var isPDF = file.type === 'application/pdf';
   var mime = isPDF ? 'application/pdf' : (file.type || 'image/jpeg');
 
-  var contentBlock = isPDF
-    ? {type:'document', source:{type:'base64', media_type:'application/pdf', data:base64}}
-    : {type:'image', source:{type:'base64', media_type:mime, data:base64}};
+  var docBlock = isPDF
+    ? { type:'document', source:{ type:'base64', media_type:'application/pdf', data:base64 } }
+    : { type:'image',    source:{ type:'base64', media_type:mime, data:base64 } };
 
-  var response = await fetch('https://api.anthropic.com/v1/messages', {
+  var resp = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true'
+      'x-api-key': apiKey
     },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-6',
+      model: 'claude-opus-4-6',
       max_tokens: 1500,
-      messages: [{
-        role: 'user',
-        content: [contentBlock, {type:'text', text: AI_PROMPT}]
-      }]
+      messages: [{ role:'user', content:[ docBlock, { type:'text', text:AI_PROMPT } ] }]
     })
   });
 
-  if (!response.ok) {
-    var err = await response.json();
-    throw new Error((err.error && err.error.message) || 'API error ' + response.status);
+  var data = await resp.json();
+  if (data.error) throw new Error('Claude: ' + data.error.message);
+
+  var raw = '';
+  for (var i = 0; i < (data.content||[]).length; i++) {
+    if (data.content[i].type === 'text') { raw = data.content[i].text; break; }
   }
+  return parseAIResponse(raw, 'Claude AI');
+}
 
-  var data = await response.json();
-  var text = '';
-  for (var i = 0; i < data.content.length; i++) {
-    if (data.content[i].type === 'text') { text = data.content[i].text; break; }
-  }
-
-  // Strip any markdown fences
-  text = text.trim().replace(/^```[a-z]*\n?/,'').replace(/```$/,'').trim();
-  var s = text.indexOf('{'), e2 = text.lastIndexOf('}');
-  if (s >= 0 && e2 > s) text = text.substring(s, e2 + 1);
-
-  var ext = JSON.parse(text);
+function parseAIResponse(raw, source) {
+  raw = (raw||'').trim().replace(/^```[a-z]*\n?/, '').replace(/```$/, '').trim();
+  var s = raw.indexOf('{'), e = raw.lastIndexOf('}');
+  if (s >= 0 && e > s) raw = raw.substring(s, e + 1);
+  var ext = JSON.parse(raw);
   return {
-    gstin:      ext.gstin      || '',
-    invoice:    ext.invoice    || 'Unknown',
-    date:       ext.date       || '',
-    vendorName: ext.vendorName || '',
-    subTotal:   Number(ext.subTotal)   || 0,
-    cgst:       Number(ext.cgst)       || 0,
-    sgst:       Number(ext.sgst)       || 0,
-    igst:       Number(ext.igst)       || 0,
-    grandTotal: Number(ext.grandTotal) || 0,
-    lineItems:  ext.lineItems  || [],
-    irn:        ext.irn        || null,
+    gstin:      String(ext.gstin      || ''),
+    invoice:    String(ext.invoice    || 'Unknown'),
+    date:       String(ext.date       || ''),
+    vendorName: String(ext.vendorName || ''),
+    subTotal:   Number(ext.subTotal)  || 0,
+    cgst:       Number(ext.cgst)      || 0,
+    sgst:       Number(ext.sgst)      || 0,
+    igst:       Number(ext.igst)      || 0,
+    grandTotal: Number(ext.grandTotal)|| 0,
+    lineItems:  Array.isArray(ext.lineItems) ? ext.lineItems : [],
+    irn:        ext.irn || null,
     qrVerified: !!ext.qrVerified,
     aiExtracted: true,
-    extractionMethod: 'Claude AI'
+    extractionMethod: source
   };
 }
 
+// ── Show results after processing ──────────────────────────
 function showBillResults(results) {
   var valid = results.filter(function(r){ return r.inv && !r.error; });
   if (!valid.length) return;
 
-  if (valid.length === 1) {
-    // Single bill — go directly to result view
+  if (results.length === 1 && valid.length === 1) {
+    // Single bill: go directly to scan result view
     document.getElementById('scan-upload-view').style.display = 'none';
     var inv = valid[0].inv;
     var vendor = null;
@@ -1121,156 +1265,158 @@ function showBillResults(results) {
     if (!vendor) { buildQuickAdd(inv); }
     else { currentScanVendor = vendor; buildScanResult(inv, vendor); }
   } else {
-    // Multiple bills — show a summary table then process one by one
+    // Multiple bills: show batch summary
+    multiBillResults = results;
     document.getElementById('scan-upload-view').style.display = 'none';
     buildMultiResult(results);
   }
 }
 
+// ── Multi-bill summary view ─────────────────────────────────
 function buildMultiResult(results) {
   var container = document.getElementById('scan-result-view');
   container.innerHTML = '';
   container.style.display = 'block';
 
+  var ok = results.filter(function(r){ return !r.error; }).length;
   var banner = el('div','match-banner','margin-bottom:20px;');
   banner.innerHTML = '<div style="font-size:24px;">&#129302;</div>'
     + '<div><div style="font-size:14px;font-weight:700;color:var(--accent);">'
-    + results.filter(function(r){return !r.error;}).length + ' of ' + results.length + ' bills extracted successfully</div>'
-    + '<div style="font-size:12px;color:var(--text2);font-family:DM Mono,monospace;margin-top:2px;">Click any bill to review and post the journal entry</div></div>'
+    + ok + ' of ' + results.length + ' bills extracted</div>'
+    + '<div style="font-size:12px;color:var(--text2);font-family:DM Mono,monospace;margin-top:2px;">Click any bill to review and post journal entry</div></div>'
     + '<button class="btn btn-ghost btn-sm" style="margin-left:auto;" onclick="resetScan()">Scan More</button>';
   container.appendChild(banner);
 
-  var grid = el('div','','display:flex;flex-direction:column;gap:10px;');
   results.forEach(function(r, idx) {
-    var card = el('div','card','cursor:pointer;transition:border-color 0.15s;');
-    card.style.borderColor = r.error ? '#f8717130' : 'var(--border)';
+    var card = el('div','card','margin-bottom:10px;cursor:pointer;');
     var inv = r.inv;
     if (r.error || !inv) {
-      card.innerHTML = '<div style="padding:16px 20px;display:flex;align-items:center;gap:12px;">'
-        + '<span style="font-size:20px;">&#10060;</span>'
+      card.innerHTML = '<div style="padding:14px 20px;display:flex;gap:10px;align-items:center;">'
+        + '<span style="font-size:18px;">&#10060;</span>'
         + '<div><div style="font-size:13px;font-weight:600;color:var(--red);">' + r.file + '</div>'
-        + '<div style="font-size:11px;color:var(--text3);font-family:DM Mono,monospace;margin-top:2px;">' + (r.error || 'Failed') + '</div></div></div>';
+        + '<div style="font-size:11px;color:var(--text3);margin-top:2px;">' + (r.error||'Failed') + '</div></div></div>';
     } else {
-      var vendor = vendors.find(function(v){ return v.gstin === inv.gstin; });
-      var matchBadge = vendor
-        ? '<span class="badge badge-green" style="font-size:10px;">Vendor matched</span>'
+      var vendor = null;
+      for (var i = 0; i < vendors.length; i++) { if (vendors[i].gstin === inv.gstin) { vendor = vendors[i]; break; } }
+      var badge = vendor
+        ? '<span class="badge badge-green" style="font-size:10px;">Matched</span>'
         : '<span class="badge badge-gold" style="font-size:10px;">New vendor</span>';
+      var iIdx = idx;
+      card.onclick = function(){ openBillFromMulti(iIdx); };
       card.innerHTML = '<div style="padding:14px 20px;display:flex;align-items:center;gap:14px;">'
-        + '<span style="font-size:22px;">&#128196;</span>'
+        + '<span style="font-size:20px;">&#128196;</span>'
         + '<div style="flex:1;">'
-        + '<div style="font-size:13px;font-weight:700;color:var(--text);">' + (inv.vendorName || inv.gstin) + ' &nbsp;' + matchBadge + '</div>'
+        + '<div style="font-size:13px;font-weight:700;color:var(--text);">'
+        + (inv.vendorName || inv.gstin || r.file) + ' &nbsp;' + badge + '</div>'
         + '<div style="font-size:11px;color:var(--text3);font-family:DM Mono,monospace;margin-top:3px;">'
-        + 'Invoice: ' + inv.invoice + ' &nbsp;|&nbsp; Date: ' + inv.date + ' &nbsp;|&nbsp; <span style="color:var(--accent);">&#8377;' + (inv.grandTotal||0).toLocaleString('en-IN') + '</span>'
+        + inv.invoice + ' &nbsp;|&nbsp; ' + inv.date + ' &nbsp;|&nbsp; '
+        + '<span style="color:var(--accent);">&#8377;' + (inv.grandTotal||0).toLocaleString('en-IN') + '</span>'
         + '</div></div>'
-        + '<button class="btn btn-primary btn-sm" onclick="openBillFromMulti(' + idx + ')">Review &amp; Post</button>'
-        + '</div>';
+        + '<button class="btn btn-primary btn-sm">Review &amp; Post</button></div>';
     }
-    grid.appendChild(card);
+    container.appendChild(card);
   });
-  container.appendChild(grid);
 }
 
-var multiBillResults = [];
 function openBillFromMulti(idx) {
-  var r = multiBillResults[idx] || processedBills[idx];
+  var r = multiBillResults[idx];
   if (!r || !r.inv) return;
-  multiBillResults = processedBills; // save reference
   var inv = r.inv;
   currentScanInv = inv;
-  var vendor = vendors.find(function(v){ return v.gstin === inv.gstin; });
+  var vendor = null;
+  for (var i = 0; i < vendors.length; i++) { if (vendors[i].gstin === inv.gstin) { vendor = vendors[i]; break; } }
   if (!vendor) { buildQuickAdd(inv); }
   else { currentScanVendor = vendor; buildScanResult(inv, vendor); }
-  // Scroll to result
-  document.getElementById('scan-result-view').scrollIntoView({behavior:'smooth'});
 }
 
-// ── Bill Chat Assistant ────────────────────────────────────
+// ── Bill Chat (ask Claude about your bills) ─────────────────
 function showBillChat(results) {
-  var box = document.getElementById('bill-chat-box');
-  if (!box) return;
   var valid = results.filter(function(r){ return r.inv && !r.error; });
   if (!valid.length) return;
+  var box = document.getElementById('bill-chat-box');
+  if (!box) return;
 
+  chatHistory = [];
   box.style.display = 'block';
   box.innerHTML = '';
 
-  var chatHeader = el('div','','background:var(--surface2);border:1px solid var(--border);border-radius:8px;overflow:hidden;');
+  var wrap = el('div','','background:var(--surface2);border:1px solid var(--border);border-radius:8px;overflow:hidden;');
 
-  var hdr = el('div','','padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;');
-  hdr.innerHTML = '<div style="font-size:16px;">&#129302;</div>'
-    + '<div style="font-size:13px;font-weight:600;color:var(--text);">Ask about your bills</div>'
-    + '<div style="font-size:11px;color:var(--text3);font-family:DM Mono,monospace;margin-left:4px;">— ' + valid.length + ' bill' + (valid.length>1?'s':' ') + ' in context</div>';
-  chatHeader.appendChild(hdr);
+  var hdr = el('div','','padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;');
+  hdr.innerHTML = '<span style="font-size:16px;">&#129302;</span>'
+    + '<span style="font-size:13px;font-weight:600;color:var(--text);">Ask Claude about your bill' + (valid.length>1?'s':'') + '</span>'
+    + '<span style="font-size:11px;color:var(--text3);font-family:DM Mono,monospace;">&mdash; ' + valid.length + ' bill' + (valid.length>1?'s':' ') + ' in context</span>';
+  wrap.appendChild(hdr);
 
-  var msgs = el('div','','padding:12px 16px;min-height:60px;max-height:240px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;font-size:13px;');
-  msgs.id = 'bill-chat-msgs';
+  var msgs = el('div','','padding:12px 16px;min-height:40px;max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;');
+  msgs.id = 'chat-msgs';
 
-  // Suggested questions
-  var suggs = el('div','','display:flex;flex-wrap:wrap;gap:6px;padding:10px 16px;border-top:1px solid var(--border);');
+  // Suggested chips
+  var chips = el('div','','display:flex;flex-wrap:wrap;gap:6px;padding:8px 16px;border-top:1px solid var(--border);');
   var questions = valid.length > 1
-    ? ['What is the total GST across all bills?','Which vendor charged highest amount?','Show me TDS summary','Any missing IRN?']
-    : ['What is the GST breakdown?','Is TDS applicable?','Is IRN present?','What are the line items?'];
+    ? ['Total GST across all bills?','Which vendor charged highest?','Any missing IRN?','TDS summary']
+    : ['What is the GST breakdown?','Is IRN present?','Is TDS applicable?','List line items'];
   questions.forEach(function(q) {
-    var chip = el('button','btn btn-ghost btn-sm','font-size:11px;padding:4px 10px;border-radius:20px;');
+    var chip = el('button','btn btn-ghost btn-sm','font-size:11px;padding:3px 10px;border-radius:20px;');
     chip.textContent = q;
     chip.onclick = function(){ sendBillChat(q, valid); };
-    suggs.appendChild(chip);
+    chips.appendChild(chip);
   });
 
-  var inputRow = el('div','','padding:10px 16px;border-top:1px solid var(--border);display:flex;gap:8px;');
+  var inputRow = el('div','','padding:8px 16px;border-top:1px solid var(--border);display:flex;gap:8px;');
   var inp = document.createElement('input');
-  inp.type = 'text'; inp.id = 'bill-chat-input';
+  inp.type = 'text'; inp.id = 'chat-input';
   inp.placeholder = 'Ask anything about your bill(s)...';
-  inp.style.cssText = 'flex:1;background:var(--surface3);border:1px solid var(--border2);border-radius:6px;padding:8px 12px;font-size:13px;color:var(--text);outline:none;font-family:DM Sans,sans-serif;';
-  inp.onkeydown = function(e){ if(e.key==='Enter') sendBillChat(inp.value, valid); };
+  inp.style.cssText = 'flex:1;background:var(--surface3);border:1px solid var(--border2);border-radius:6px;padding:7px 12px;font-size:12px;color:var(--text);outline:none;font-family:DM Sans,sans-serif;';
+  inp.onkeydown = function(e){ if (e.key === 'Enter') sendBillChat(inp.value, valid); };
   var sendBtn = el('button','btn btn-primary btn-sm','');
-  sendBtn.textContent = 'Ask'; sendBtn.onclick = function(){ sendBillChat(inp.value, valid); };
+  sendBtn.textContent = 'Ask';
+  sendBtn.onclick = function(){ sendBillChat(inp.value, valid); };
 
-  inputRow.appendChild(inp); inputRow.appendChild(sendBtn);
-  chatHeader.appendChild(msgs); chatHeader.appendChild(suggs); chatHeader.appendChild(inputRow);
-  box.appendChild(chatHeader);
+  inputRow.appendChild(inp);
+  inputRow.appendChild(sendBtn);
+  wrap.appendChild(msgs);
+  wrap.appendChild(chips);
+  wrap.appendChild(inputRow);
+  box.appendChild(wrap);
 }
 
 async function sendBillChat(question, bills) {
-  if (!question || !question.trim()) return;
-  var inp = document.getElementById('bill-chat-input');
-  var msgs = document.getElementById('bill-chat-msgs');
+  question = (question || '').trim();
+  if (!question) return;
+  var inp = document.getElementById('chat-input');
+  var msgs = document.getElementById('chat-msgs');
   if (!msgs) return;
   if (inp) inp.value = '';
 
-  // Add user message
-  var userMsg = el('div','','align-self:flex-end;background:var(--accent-dim);border:1px solid #4ade8030;border-radius:8px 8px 2px 8px;padding:8px 12px;max-width:80%;font-size:12px;color:var(--text);');
-  userMsg.textContent = question;
-  msgs.appendChild(userMsg);
-  msgs.scrollTop = msgs.scrollHeight;
+  // User bubble
+  var uBubble = el('div','','align-self:flex-end;background:var(--accent-dim);border:1px solid #4ade8030;border-radius:8px 8px 2px 8px;padding:7px 12px;max-width:80%;font-size:12px;');
+  uBubble.textContent = question;
+  msgs.appendChild(uBubble);
 
-  // Thinking indicator
-  var thinking = el('div','','align-self:flex-start;background:var(--surface3);border:1px solid var(--border);border-radius:8px 8px 8px 2px;padding:8px 12px;font-size:12px;color:var(--text3);font-family:DM Mono,monospace;');
-  thinking.textContent = 'Claude is thinking...';
+  // Thinking
+  var thinking = el('div','','align-self:flex-start;background:var(--surface3);border:1px solid var(--border);border-radius:8px 8px 8px 2px;padding:7px 12px;font-size:12px;color:var(--text3);font-family:DM Mono,monospace;');
+  thinking.textContent = 'Thinking...';
   msgs.appendChild(thinking);
   msgs.scrollTop = msgs.scrollHeight;
 
+  var billContext = bills.map(function(b, i) {
+    var v = b.inv;
+    var lines = [];
+    lines.push('Bill '+(i+1)+' ('+b.file+')');
+    lines.push('Vendor: '+(v.vendorName||v.gstin));
+    lines.push('Invoice: '+v.invoice+'  Date: '+v.date);
+    lines.push('Taxable: '+String(v.subTotal)+'  CGST: '+String(v.cgst)+'  SGST: '+String(v.sgst));
+    lines.push('Grand Total: Rs.'+String(v.grandTotal));
+    lines.push('GSTIN: '+v.gstin);
+    lines.push('IRN: '+(v.irn?'Present':'Missing'));
+    return lines.join('\n');
+  }).join('\n\n');
+
+  chatHistory.push({ role:'user', content: question });
+
   try {
-    // Build context from extracted bills
-    var billContext = bills.map(function(b, i) {
-      var inv = b.inv;
-      return 'Bill ' + (i+1) + ' (' + b.file + '):\n'
-        + 'Vendor: ' + (inv.vendorName||inv.gstin) + '\n'
-        + 'Invoice: ' + inv.invoice + '  Date: ' + inv.date + '\n'
-        + 'Taxable: Rs.' + inv.subTotal + '  CGST: Rs.' + inv.cgst + '  SGST: Rs.' + inv.sgst
-        + (inv.igst ? '  IGST: Rs.' + inv.igst : '') + '\n'
-        + 'Grand Total: Rs.' + inv.grandTotal + '\n'
-        + 'GSTIN: ' + inv.gstin + '\n'
-        + 'IRN: ' + (inv.irn ? inv.irn.substring(0,16)+'...' : 'Not present') + '\n'
-        + 'Line items: ' + (inv.lineItems||[]).map(function(l){ return l.desc + ' (HSN:' + l.hsn + ')'; }).join(', ');
-    }).join('\n\n');
-
-    chatHistory.push({role:'user', content: question});
-
-    var sysPrompt = 'You are an Indian GST accounting assistant helping analyze invoices. '
-      + 'Answer concisely. Here are the extracted bills:\n\n' + billContext;
-
-    var response = await fetch('https://api.anthropic.com/v1/messages', {
+    var resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1279,35 +1425,87 @@ async function sendBillChat(question, bills) {
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
-        max_tokens: 600,
-        system: sysPrompt,
+        max_tokens: 500,
+        system: 'You are an Indian GST accounting assistant. Answer concisely about these bills:\n\n' + billContext,
         messages: chatHistory
       })
     });
 
-    var data = await response.json();
-    var answer = data.content && data.content[0] ? data.content[0].text : 'Could not get response.';
-    chatHistory.push({role:'assistant', content: answer});
+    var data = await resp.json();
+    var answer = data.content && data.content[0] ? data.content[0].text : 'No response.';
+    chatHistory.push({ role:'assistant', content: answer });
 
-    thinking.remove();
-    var aiMsg = el('div','','align-self:flex-start;background:var(--surface3);border:1px solid var(--border);border-radius:8px 8px 8px 2px;padding:8px 12px;max-width:90%;font-size:12px;color:var(--text);line-height:1.6;white-space:pre-wrap;');
-    aiMsg.textContent = answer;
-    msgs.appendChild(aiMsg);
-    msgs.scrollTop = msgs.scrollHeight;
-
+    thinking.textContent = answer;
+    thinking.style.color = 'var(--text)';
+    thinking.style.lineHeight = '1.6';
+    thinking.style.whiteSpace = 'pre-wrap';
+    thinking.style.fontFamily = 'DM Sans,sans-serif';
   } catch(err) {
     thinking.textContent = 'Error: ' + err.message;
     thinking.style.color = 'var(--red)';
   }
+  msgs.scrollTop = msgs.scrollHeight;
 }
 
-// Keep old single-file flow for drag-drop compatibility
-function extractFromFile(file) {
-  fileQueue = [file];
-  renderFileQueue([file]);
-  // Auto-process immediately for single drag-drop
-  processAllFiles();
+
+// ── Correction Memory Engine ──────────────────────────────
+var CM_PREFIX = 'vl_cm_';
+
+function cmLoad(gstin) {
+  if (!gstin) return {};
+  try { var r = localStorage.getItem(CM_PREFIX + gstin); return r ? JSON.parse(r) : {}; }
+  catch(e) { return {}; }
 }
+
+function cmSave(gstin, data) {
+  if (!gstin) return;
+  try { localStorage.setItem(CM_PREFIX + gstin, JSON.stringify(data)); } catch(e) {}
+}
+
+function cmApply(inv) {
+  var mem = cmLoad(inv.gstin);
+  if (!mem || !Object.keys(mem).length) return inv;
+  var out = JSON.parse(JSON.stringify(inv));
+  var applied = [];
+  if (mem.invoice && out.invoice !== mem.invoice) { out.invoice = mem.invoice; applied.push('invoice'); }
+  if (mem.vendorName && out.vendorName !== mem.vendorName) { out.vendorName = mem.vendorName; applied.push('vendor name'); }
+  ['subTotal','cgst','sgst','igst','grandTotal'].forEach(function(f) {
+    if (mem[f] && mem[f] > 0) {
+      var parsed = out[f] || 0;
+      if (parsed === 0 || Math.abs(parsed - mem[f]) / mem[f] > 0.20) { out[f] = mem[f]; applied.push(f); }
+    }
+  });
+  if (applied.length) { out.memoryApplied = applied; }
+  return out;
+}
+
+function cmLearn(gstin, extracted, actual) {
+  if (!gstin) return false;
+  var mem = cmLoad(gstin);
+  var learned = false;
+  ['invoice','vendorName','subTotal','cgst','sgst','igst','grandTotal'].forEach(function(f) {
+    var ext = String(extracted[f] || '').trim();
+    var act = String(actual[f] || '').trim();
+    if (act && act !== '0' && ext !== act) { mem[f] = actual[f]; learned = true; }
+    else if (act && act !== '0' && !mem[f]) { mem[f] = actual[f]; }
+  });
+  if (learned) { mem._count = (mem._count||0)+1; mem._date = new Date().toLocaleDateString('en-IN'); cmSave(gstin, mem); }
+  return learned;
+}
+
+function cmGetAll() {
+  var all = [];
+  for (var i = 0; i < localStorage.length; i++) {
+    var key = localStorage.key(i);
+    if (key && key.indexOf(CM_PREFIX) === 0) {
+      all.push({ gstin: key.substring(CM_PREFIX.length), data: cmLoad(key.substring(CM_PREFIX.length)) });
+    }
+  }
+  return all;
+}
+
+function cmClear(gstin) { localStorage.removeItem(CM_PREFIX + gstin); }
+
 
 function parseInvoiceText(text) {
   var raw = text;
@@ -1570,5 +1768,741 @@ function parseInvoiceText(text) {
   };
 }
 
+function processBillData(inv) {
+  showProc('Matching with Vendor Master...');
+  setTimeout(function() {
+    hideProc();
+    var vendor = null;
+    for (var i = 0; i < vendors.length; i++) {
+      if (vendors[i].gstin === inv.gstin) { vendor = vendors[i]; break; }
+    }
+    if (!vendor) {
+      currentScanInv = inv;
+      buildQuickAdd(inv);
+    } else {
+      currentScanInv = inv;
+      currentScanVendor = vendor;
+      buildScanResult(inv, vendor);
+    }
+  }, 600);
+}
+
+// ── Build Scan Result using DOM (NO template literals) ─────
+function buildScanResult(inv, vendor) {
+  var tdsAmt = vendor.tdsApplicable === 'yes' ? Math.round(inv.subTotal * vendor.tdsRate / 100) : 0;
+  var netPayable = inv.grandTotal - tdsAmt;
+  var itc = inv.cgst + inv.sgst;
+  var dueDate = new Date();
+  dueDate.setDate(dueDate.getDate() + (vendor.paymentDays || 30));
+  var dueDateStr = dueDate.toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'});
+  var eInvApplicable = vendor.einvoice === 'yes';
+  var irnPresent = !!inv.irn;
+
+  var container = document.getElementById('scan-result-view');
+  container.innerHTML = '';
+
+  // Match banner
+  var banner = el('div', 'match-banner');
+  banner.innerHTML = '<div style="font-size:24px">&#9989;</div><div><div style="font-size:14px;font-weight:700;color:var(--accent)">Vendor Found in Master - All Details Auto-Populated</div><div style="font-size:12px;color:var(--text2);font-family:DM Mono,monospace;margin-top:2px;">GSTIN ' + inv.gstin + ' matched to "' + vendor.name + '" - ' + (vendor.tdsSection || 'No TDS') + '</div></div><button class="btn btn-ghost btn-sm" style="margin-left:auto;" onclick="resetScan()">Scan Another</button>';
+  container.appendChild(banner);
+
+  // Bill summary card
+  var billCard = el('div', 'card', 'margin-bottom:20px;');
+  var bh = el('div', 'card-header');
+  bh.innerHTML = '<div class="card-title">&#128196; Extracted Bill Data <span class="badge badge-green" style="font-size:10px;">AI Extracted</span></div><div style="font-family:DM Mono,monospace;font-size:11px;color:var(--text3);">Confidence: <span style="color:var(--accent)">94%</span></div>';
+  billCard.appendChild(bh);
+  var metaGrid = el('div','meta-grid');
+  var metaCells = [['Vendor',vendor.name],['Invoice No.',inv.invoice],['Date',inv.date],['Grand Total','Rs.' + inv.grandTotal.toLocaleString('en-IN')]];
+  for (var i = 0; i < metaCells.length; i++) {
+    var mc = el('div','meta-cell'); mc.innerHTML = '<div class="meta-label">' + metaCells[i][0] + '</div><div class="meta-value">' + metaCells[i][1] + '</div>';
+    metaGrid.appendChild(mc);
+  }
+  billCard.appendChild(metaGrid);
+  // Line items table
+  var tbl = document.createElement('table'); tbl.style.cssText = 'width:100%;border-collapse:collapse;font-size:13px;';
+  tbl.innerHTML = '<thead><tr style="background:var(--surface2);"><th style="padding:10px 16px;text-align:left;font-family:DM Mono,monospace;font-size:10px;color:var(--text3);font-weight:500;border-bottom:1px solid var(--border);">Description</th><th style="padding:10px 16px;font-family:DM Mono,monospace;font-size:10px;color:var(--text3);font-weight:500;border-bottom:1px solid var(--border);">HSN</th><th style="padding:10px 16px;text-align:right;font-family:DM Mono,monospace;font-size:10px;color:var(--text3);font-weight:500;border-bottom:1px solid var(--border);">Amount</th><th style="padding:10px 16px;font-family:DM Mono,monospace;font-size:10px;color:var(--text3);font-weight:500;border-bottom:1px solid var(--border);">GST%</th></tr></thead>';
+  var tbody2 = document.createElement('tbody');
+  for (var i = 0; i < inv.lineItems.length; i++) {
+    var item = inv.lineItems[i];
+    var row = document.createElement('tr');
+    row.innerHTML = '<td style="padding:12px 16px;border-bottom:1px solid var(--border);">' + item.desc + '</td><td style="padding:12px 16px;border-bottom:1px solid var(--border);"><span class="badge badge-blue">' + item.hsn + '</span></td><td style="padding:12px 16px;text-align:right;border-bottom:1px solid var(--border);font-family:DM Mono,monospace;font-weight:500;">Rs.' + item.amt.toLocaleString('en-IN') + '</td><td style="padding:12px 16px;border-bottom:1px solid var(--border);"><span class="badge badge-green">' + item.gstRate + '%</span></td>';
+    tbody2.appendChild(row);
+  }
+  addSummaryRow(tbody2, 'Sub Total', inv.subTotal, 'var(--surface2)');
+  addSummaryRow(tbody2, 'CGST', inv.cgst, '');
+  addSummaryRow(tbody2, 'SGST', inv.sgst, '');
+  addSummaryRow(tbody2, 'Grand Total', inv.grandTotal, 'var(--surface3)', true);
+  tbl.appendChild(tbody2); billCard.appendChild(tbl);
+  container.appendChild(billCard);
+
+  // Vendor from Master card
+  var vCard = el('div','card','margin-bottom:20px;');
+  var vh = el('div','card-header');
+  vh.innerHTML = '<div class="card-title">&#127970; Vendor Details <span class="badge badge-gold">From Master</span></div><button class="btn btn-ghost btn-sm" onclick="showPanel(\'vendors\'); openAddVendor(\'' + vendor.id + '\')">Edit Vendor</button>';
+  vCard.appendChild(vh);
+  var vmg = el('div','vendor-meta-grid');
+  var vmCells = [['GSTIN',vendor.gstin],['PAN',vendor.pan || '-'],['Entity',vendor.entity || '-'],['MSME',vendor.msme ? (vendor.msmeCat + ' Enterprise') : 'No'],['e-Invoice',eInvApplicable ? ('Yes - ' + (vendor.einvoiceSlab||'?') + ' Cr') : 'Not Applicable'],['Expense Ledger',vendor.ledger],['TDS Section',vendor.tdsApplicable==='yes' ? (vendor.tdsSection + ' @ ' + vendor.tdsRate + '%') : 'N/A'],['Payment Terms',vendor.paymentDays + ' Days'],['Due Date',dueDateStr]];
+  for (var i = 0; i < vmCells.length; i++) {
+    var vc = el('div','vendor-meta-cell'); vc.innerHTML = '<div style="font-family:DM Mono,monospace;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">' + vmCells[i][0] + '</div><div style="font-size:12px;font-weight:600;color:var(--text);">' + vmCells[i][1] + '</div>';
+    vmg.appendChild(vc);
+  }
+  vCard.appendChild(vmg);
+  if (vendor.msme) {
+    var mw = el('div','msme-warning','margin:12px 16px;');
+    mw.textContent = 'MSME Vendor - Pay within ' + vendor.paymentDays + ' days (MSMED Act Sec 15). Due: ' + dueDateStr;
+    vCard.appendChild(mw);
+  }
+  container.appendChild(vCard);
+
+  // Compliance heading
+  var sh = el('div','section-heading');
+  sh.innerHTML = '<span>&#9878; COMPLIANCE ANALYSIS</span><div class="section-heading-line"></div>';
+  container.appendChild(sh);
+
+  // Compliance 4 cards
+  var cg = el('div','comp-grid');
+  // TDS
+  var tdsCard = el('div','comp-card tds');
+  tdsCard.innerHTML = '<div class="comp-label">TDS Deduction</div><div class="comp-value">' + (vendor.tdsApplicable==='yes' ? (vendor.tdsRate + '% u/s ' + vendor.tdsSection) : 'Not Applicable') + '</div><div class="comp-detail">' + (vendor.tdsApplicable==='yes' ? 'Deduct before payment<br>Threshold: Rs.' + (vendor.tdsThreshold||0).toLocaleString('en-IN') + ' p.a.' : 'No TDS for this vendor') + '</div><div class="comp-amount"><span class="comp-amount-label">Deduct</span><span class="comp-amount-val">Rs.' + tdsAmt.toLocaleString('en-IN') + '</span></div>';
+  // GST
+  var gstCard = el('div','comp-card gst');
+  gstCard.innerHTML = '<div class="comp-label">GST Input Credit</div><div class="comp-value">ITC Available</div><div class="comp-detail">Vendor GST registered<br>Full ITC on GSTR-2B</div><div class="comp-amount"><span class="comp-amount-label">ITC Claim</span><span class="comp-amount-val">Rs.' + itc.toLocaleString('en-IN') + '</span></div>';
+  // RCM
+  var rcmCard = el('div','comp-card rcm');
+  rcmCard.innerHTML = '<div class="comp-label">RCM</div><div class="comp-value">' + (vendor.rcm==='yes' ? 'Applicable' : 'Not Applicable') + '</div><div class="comp-detail">' + (vendor.rcm==='yes' ? 'Pay GST to govt<br>Vendor not to charge' : 'Vendor charges GST<br>No reverse charge') + '</div><div class="comp-amount"><span class="comp-amount-label">Pay to Govt</span><span class="comp-amount-val">Rs.0</span></div>';
+  // e-Invoice
+  var einvClass = 'comp-card ' + (eInvApplicable ? 'einv' : 'einv-na');
+  var einvCard = el('div', einvClass);
+  var einvDetailHtml = eInvApplicable
+    ? 'IRN: <span style="color:' + (irnPresent ? 'var(--accent)' : 'var(--red)') + '">' + (irnPresent ? 'Present' : 'Missing') + '</span><br>QR: <span style="color:' + (inv.qrVerified ? 'var(--accent)' : 'var(--amber)') + '">' + (inv.qrVerified ? 'Verified' : 'Unverified') + '</span><br>Slab: ' + (vendor.einvoiceSlab||'-') + ' Cr'
+    : 'Turnover below<br>Rs.5 Cr threshold';
+  einvCard.innerHTML = '<div class="comp-label">e-Invoice</div><div class="comp-value" style="color:' + (eInvApplicable ? 'var(--blue)' : 'var(--text2)') + ';font-size:14px;">' + (eInvApplicable ? 'Applicable' : 'Not Required') + '</div><div class="comp-detail">' + einvDetailHtml + '</div><div class="comp-amount"><span class="comp-amount-label">IRN Status</span><span class="comp-amount-val" style="color:' + (eInvApplicable ? (irnPresent ? 'var(--accent)' : 'var(--red)') : 'var(--text3)') + ';font-size:11px;">' + (eInvApplicable ? (irnPresent ? 'Valid' : 'Missing') : 'N/A') + '</span></div>';
+  cg.appendChild(tdsCard); cg.appendChild(gstCard); cg.appendChild(rcmCard); cg.appendChild(einvCard);
+  container.appendChild(cg);
+
+  // IRN warning if applicable but missing
+  if (eInvApplicable && !irnPresent) {
+    var irnWarn = el('div','irn-warning');
+    irnWarn.innerHTML = '<span style="font-size:16px;flex-shrink:0;">&#9888;</span><div style="flex:1;"><div style="font-weight:700;color:var(--red);font-size:13px;margin-bottom:4px;">e-Invoice IRN Missing</div><div style="font-family:DM Mono,monospace;font-size:11px;color:var(--text3);line-height:1.7;margin-bottom:10px;">This vendor requires e-Invoice. No IRN found on this bill. ITC may be disallowed. Ask vendor to regenerate via IRP portal.</div><div style="display:flex;gap:8px;"><input type="text" id="irn-input" placeholder="Paste IRN here (64 characters)..." style="flex:1;background:var(--surface3);border:1px solid var(--border2);border-radius:4px;padding:7px 12px;color:var(--text);font-family:DM Mono,monospace;font-size:11px;outline:none;"><button class="btn btn-secondary btn-sm" onclick="saveIRN()">Save IRN</button></div></div>';
+    container.appendChild(irnWarn);
+  }
+
+  // Journal Entry heading
+  var jh = el('div','section-heading');
+  jh.innerHTML = '<span>&#128210; JOURNAL ENTRY PREVIEW - EDITABLE</span><div class="section-heading-line"></div>';
+  container.appendChild(jh);
+
+  // Journal preview
+  var jp = el('div','journal-preview','margin-bottom:20px;');
+  var jtbl = document.createElement('table');
+  jtbl.innerHTML = '<thead><tr><th>Ledger Account</th><th>Under Group</th><th style="text-align:right;">Dr (Rs.)</th><th style="text-align:right;">Cr (Rs.)</th></tr></thead>';
+  var jtbody = document.createElement('tbody');
+  addJournalRow(jtbody, vendor.ledger, vendor.ledgerGroup, inv.subTotal, 0, false);
+  addJournalRow(jtbody, 'CGST Input Tax Credit', 'Current Assets', inv.cgst, 0, false);
+  addJournalRow(jtbody, 'SGST Input Tax Credit', 'Current Assets', inv.sgst, 0, false);
+  if (tdsAmt > 0) addJournalRow(jtbody, 'To TDS Payable u/s ' + vendor.tdsSection, 'Current Liabilities', 0, tdsAmt, true);
+  addJournalRow(jtbody, 'To ' + vendor.name, 'Sundry Creditors', 0, netPayable, true);
+  var totalDr = inv.subTotal + inv.cgst + inv.sgst;
+  var totRow = document.createElement('tr'); totRow.className = 'totals-row';
+  totRow.innerHTML = '<td colspan="2" style="text-align:right;color:var(--text2);">TOTAL</td><td class="dr">Rs.' + totalDr.toLocaleString('en-IN') + '</td><td class="cr">Rs.' + totalDr.toLocaleString('en-IN') + '</td>';
+  jtbody.appendChild(totRow);
+  jtbl.appendChild(jtbody); jp.appendChild(jtbl);
+  container.appendChild(jp);
+
+  // Narration
+  var narDiv = el('div','','margin-bottom:16px;');
+  narDiv.innerHTML = '<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;">Narration</div>';
+  var narInput = document.createElement('input');
+  narInput.type = 'text'; narInput.className = 'form-input'; narInput.id = 'entry-narration';
+  narInput.value = 'Being expense for Invoice ' + inv.invoice + ' from ' + vendor.name + ' dt. ' + inv.date;
+  narInput.style.fontSize = '13px';
+  narDiv.appendChild(narInput);
+  container.appendChild(narDiv);
+
+  // Action buttons
+  var actions = el('div','','display:flex;gap:10px;flex-wrap:wrap;');
+  var postBtn = document.createElement('button'); postBtn.className = 'btn btn-primary btn-lg'; postBtn.textContent = 'Post Journal Entry'; postBtn.onclick = postCurrentScan;
+  var xmlBtn = document.createElement('button'); xmlBtn.className = 'btn btn-secondary'; xmlBtn.textContent = 'Download Tally XML'; xmlBtn.onclick = downloadCurrentXML;
+  var resetBtn = document.createElement('button'); resetBtn.className = 'btn btn-ghost'; resetBtn.textContent = 'Scan Another Bill'; resetBtn.onclick = resetScan;
+  actions.appendChild(postBtn); actions.appendChild(xmlBtn); actions.appendChild(resetBtn);
+  container.appendChild(actions);
+
+  container.style.display = 'block';
+}
+
+function el(tag, className, style) {
+  var e = document.createElement(tag);
+  if (className) e.className = className;
+  if (style) e.style.cssText = style;
+  return e;
+}
+
+function addSummaryRow(tbody, label, amount, bg, bold) {
+  var tr = document.createElement('tr');
+  if (bg) tr.style.background = bg;
+  var amtStyle = 'padding:10px 16px;text-align:right;font-family:DM Mono,monospace;' + (bold ? 'font-weight:700;font-size:15px;color:var(--accent);' : 'font-weight:600;');
+  tr.innerHTML = '<td colspan="2" style="padding:10px 16px;text-align:right;font-size:12px;color:var(--text3);' + (bold ? 'font-weight:700;color:var(--text);' : '') + '">' + label + '</td><td style="' + amtStyle + '">Rs.' + amount.toLocaleString('en-IN') + '</td><td></td>';
+  tbody.appendChild(tr);
+}
+
+function addJournalRow(tbody, ledgerName, groupName, dr, cr, indent) {
+  var tr = document.createElement('tr');
+  var nameHtml = '<div class="ledger-name"' + (indent ? ' style="padding-left:16px;"' : '') + ' contenteditable="true" style="outline:none;border-bottom:1px dashed var(--border2);padding-bottom:2px;">' + ledgerName + '</div><div class="ledger-group"' + (indent ? ' style="padding-left:16px;"' : '') + '>' + groupName + '</div>';
+  tr.innerHTML = '<td>' + nameHtml + '</td><td><span class="badge badge-muted">' + groupName + '</span></td><td class="dr">' + (dr > 0 ? 'Rs.' + dr.toLocaleString('en-IN') : '-') + '</td><td class="cr">' + (cr > 0 ? 'Rs.' + cr.toLocaleString('en-IN') : '-') + '</td>';
+  tbody.appendChild(tr);
+}
+
+function saveIRN() {
+  var input = document.getElementById('irn-input');
+  if (input && input.value && input.value.length === 64) {
+    if (currentScanInv) currentScanInv.irn = input.value;
+    showToast('IRN saved - entry can now be posted');
+  } else {
+    showToast('IRN must be exactly 64 characters', true);
+  }
+}
+
+function postCurrentScan() {
+  if (!currentScanInv || !currentScanVendor) { showToast('No scan data', true); return; }
+  var inv = currentScanInv; var vendor = currentScanVendor;
+  var tdsAmt = vendor.tdsApplicable === 'yes' ? Math.round(inv.subTotal * vendor.tdsRate / 100) : 0;
+  var netPayable = inv.grandTotal - tdsAmt;
+  var narration = document.getElementById('entry-narration') ? document.getElementById('entry-narration').value : '';
+  journalEntries.push({inv:inv, vendor:vendor, tdsAmt:tdsAmt, netPayable:netPayable, narration:narration, id:String(Date.now()), date:new Date().toLocaleDateString('en-IN')});
+  updateStats(); renderEntries(); renderTallyExport();
+  showToast('Journal entry posted');
+  setTimeout(function() { showPanel('entries'); }, 800);
+}
+
+function downloadCurrentXML() {
+  if (!currentScanInv || !currentScanVendor) return;
+  var tdsAmt = currentScanVendor.tdsApplicable === 'yes' ? Math.round(currentScanInv.subTotal * currentScanVendor.tdsRate / 100) : 0;
+  downloadEntryXML(currentScanInv, currentScanVendor, tdsAmt, currentScanInv.grandTotal - tdsAmt);
+}
+
+// ── Quick-Add Vendor from Scan ─────────────────────────────
+var quickAddStep = 1;
+
+function buildQuickAdd(inv) {
+  var container = document.getElementById('scan-quickadd-view');
+  container.innerHTML = '';
+  container.style.display = 'block';
+  quickAddStep = 1;
+
+  // Banner: bill extracted summary
+  var banner = el('div', 'quickadd-banner');
+  banner.innerHTML = '<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">'
+    + '<span style="font-size:20px;">&#129534;</span>'
+    + '<div><div style="font-size:14px;font-weight:700;color:var(--blue);">New Vendor - Quick Setup Required</div>'
+    + '<div style="font-size:12px;color:var(--text2);font-family:DM Mono,monospace;margin-top:2px;">GSTIN ' + inv.gstin + ' is not in your Vendor Master. Fill in the details below - this takes 2 minutes and every future bill from this vendor will be instant.</div>'
+    + '</div></div>'
+    + '<div style="background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:12px 16px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">'
+    + '<div><div style="font-family:DM Mono,monospace;font-size:9px;color:var(--text3);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;">From Bill</div><div style="font-size:13px;font-weight:600;color:var(--text);">Invoice ' + inv.invoice + '</div></div>'
+    + '<div><div style="font-family:DM Mono,monospace;font-size:9px;color:var(--text3);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;">Date</div><div style="font-size:13px;font-weight:600;color:var(--text);">' + inv.date + '</div></div>'
+    + '<div><div style="font-family:DM Mono,monospace;font-size:9px;color:var(--text3);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;">Amount</div><div style="font-size:13px;font-weight:600;color:var(--accent);">Rs.' + inv.grandTotal.toLocaleString('en-IN') + '</div></div>'
+    + '</div>';
+  container.appendChild(banner);
+
+  // Step tabs
+  var tabs = el('div', 'quickadd-steps');
+  var stepLabels = ['1. Identity', '2. TDS', '3. MSME & e-Invoice', '4. Ledger & Terms'];
+  for (var i = 0; i < stepLabels.length; i++) {
+    var tab = el('div', 'qs-step' + (i === 0 ? ' active' : ''));
+    tab.id = 'qs-tab-' + (i + 1);
+    tab.textContent = stepLabels[i];
+    tabs.appendChild(tab);
+  }
+  container.appendChild(tabs);
+
+  // Page 1: Identity
+  var p1 = el('div', 'qs-page active'); p1.id = 'qs-page-1';
+  p1.innerHTML = '<div style="margin-bottom:16px;padding:12px 16px;background:var(--accent-dim);border:1px solid #4ade8030;border-radius:6px;">'
+    + '<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--accent);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">Extracted from Bill</div>'
+    + '<div class="form-grid form-grid-2">'
+    + '<div><div class="extracted-field-label" style="font-family:DM Mono,monospace;font-size:10px;color:var(--text3);margin-bottom:2px;">GSTIN</div><div style="font-size:13px;font-weight:600;color:var(--accent);">' + inv.gstin + '</div></div>'
+    + '<div><div class="extracted-field-label" style="font-family:DM Mono,monospace;font-size:10px;color:var(--text3);margin-bottom:2px;">PAN (auto)</div><div style="font-size:13px;font-weight:600;color:var(--accent);">' + inv.gstin.substring(2,12) + '</div></div>'
+    + '</div></div>'
+    + '<div class="form-grid form-grid-2" style="margin-top:16px;">'
+    + '<div class="form-group"><label class="form-label">Legal Name <span class="required">*</span></label><input type="text" class="form-input" id="qa-name" placeholder="As per GST registration"></div>'
+    + '<div class="form-group"><label class="form-label">Entity Type</label><select class="form-select" id="qa-entity"><option value="">-- Select --</option><option value="Private Limited">Private Limited</option><option value="Public Limited">Public Limited</option><option value="LLP">LLP</option><option value="Partnership">Partnership Firm</option><option value="Proprietorship">Proprietorship</option><option value="Individual">Individual</option><option value="Trust">Trust / Society</option></select></div>'
+    + '</div>'
+    + '<div style="margin-top:8px;"><button class="btn btn-secondary btn-sm" onclick="quickFetchGSTIN()">&#9889; Auto-Fill from GSTIN</button></div>';
+  // Set entity from PAN char
+  var entityMap = {'P':'Individual','C':'Private Limited','H':'Proprietorship','F':'Partnership','A':'Private Limited','T':'Trust / Society','B':'LLP','L':'LLP'};
+  var panChar = inv.gstin[5] ? inv.gstin[5].toUpperCase() : '';
+  if (entityMap[panChar]) {
+    setTimeout(function() {
+      var sel = document.getElementById('qa-entity');
+      if (sel) sel.value = entityMap[panChar];
+    }, 50);
+  }
+  container.appendChild(p1);
+
+  // Page 2: TDS
+  var p2 = el('div', 'qs-page'); p2.id = 'qs-page-2';
+  p2.innerHTML = '<div class="form-grid form-grid-3">'
+    + '<div class="form-group"><label class="form-label">TDS Applicable?</label><select class="form-select" id="qa-tds-applicable"><option value="yes">Yes</option><option value="no">No</option></select></div>'
+    + '<div class="form-group"><label class="form-label">TDS Section</label><select class="form-select" id="qa-tds-section" onchange="qaAutoTDSRate(this.value)"><option value="">-- Select --</option><option value="194C">194C - Contractor</option><option value="194J">194J - Professional</option><option value="194I">194I - Rent</option><option value="194A">194A - Interest</option><option value="194H">194H - Commission</option><option value="194M">194M - Contractor (Ind/HUF)</option></select></div>'
+    + '<div class="form-group"><label class="form-label">TDS Rate %</label><input type="number" class="form-input" id="qa-tds-rate" placeholder="e.g. 10" step="0.01"><span class="form-hint" id="qa-tds-hint"></span></div>'
+    + '</div>'
+    + '<div class="form-grid form-grid-2" style="margin-top:12px;">'
+    + '<div class="form-group"><label class="form-label">TDS Threshold (Rs.)</label><input type="number" class="form-input" id="qa-tds-threshold" placeholder="e.g. 30000"></div>'
+    + '<div class="form-group"><label class="form-label">RCM Applicable?</label><select class="form-select" id="qa-rcm"><option value="no">No</option><option value="yes">Yes</option></select></div>'
+    + '</div>';
+  container.appendChild(p2);
+
+  // Page 3: MSME + e-Invoice
+  var p3 = el('div', 'qs-page'); p3.id = 'qs-page-3';
+  p3.innerHTML = '<div style="margin-bottom:20px;">'
+    + '<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--text3);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;">MSME Registration</div>'
+    + '<div class="form-grid form-grid-3">'
+    + '<div class="form-group"><label class="form-label">MSME Registered?</label><select class="form-select" id="qa-msme" onchange="qaToggleMSME(this.value)"><option value="no">No</option><option value="yes">Yes</option></select></div>'
+    + '<div class="form-group" id="qa-msme-cat-grp" style="display:none;"><label class="form-label">Category</label><select class="form-select" id="qa-msme-cat"><option value="Micro">Micro</option><option value="Small">Small</option><option value="Medium">Medium</option></select></div>'
+    + '<div class="form-group" id="qa-udyam-grp" style="display:none;"><label class="form-label">Udyam No.</label><input type="text" class="form-input" id="qa-udyam" placeholder="UDYAM-XX-00-0000000"></div>'
+    + '</div></div>'
+    + '<div style="height:1px;background:var(--border);margin:16px 0;"></div>'
+    + '<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--text3);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;">e-Invoice Compliance</div>'
+    + '<div class="form-grid form-grid-3">'
+    + '<div class="form-group"><label class="form-label">e-Invoice Applicable?</label><select class="form-select" id="qa-einvoice"><option value="no">No</option><option value="yes">Yes</option></select></div>'
+    + '<div class="form-group"><label class="form-label">Turnover Slab</label><select class="form-select" id="qa-einvoice-slab"><option value="">-- Not Specified --</option><option value="5-10">Rs.5-10 Cr</option><option value="10-20">Rs.10-20 Cr</option><option value="20-50">Rs.20-50 Cr</option><option value="50-100">Rs.50-100 Cr</option><option value="100+">Above Rs.100 Cr</option></select></div>'
+    + '<div class="form-group"><label class="form-label">QR Verification</label><select class="form-select" id="qa-einvoice-qr"><option value="required">Required</option><option value="optional">Optional</option></select></div>'
+    + '</div>';
+  container.appendChild(p3);
+
+  // Page 4: Ledger + Terms
+  var p4 = el('div', 'qs-page'); p4.id = 'qs-page-4';
+  p4.innerHTML = '<div class="form-grid form-grid-2">'
+    + '<div class="form-group"><label class="form-label">Expense Ledger Name <span class="required">*</span></label><input type="text" class="form-input" id="qa-ledger" placeholder="e.g. Office Stationery and Printing"></div>'
+    + '<div class="form-group"><label class="form-label">Under Group</label><select class="form-select" id="qa-ledger-group"><option value="Indirect Expenses">Indirect Expenses</option><option value="Direct Expenses">Direct Expenses</option><option value="Purchase Accounts">Purchase Accounts</option><option value="Fixed Assets">Fixed Assets</option></select></div>'
+    + '</div>'
+    + '<div class="form-grid form-grid-3" style="margin-top:12px;">'
+    + '<div class="form-group"><label class="form-label">Credit Limit (Rs.)</label><input type="number" class="form-input" id="qa-credit-limit" placeholder="e.g. 100000"></div>'
+    + '<div class="form-group"><label class="form-label">Payment Terms (Days)</label><input type="number" class="form-input" id="qa-payment-days" placeholder="e.g. 30"></div>'
+    + '<div class="form-group"><label class="form-label">Payment Mode</label><select class="form-select" id="qa-payment-mode"><option value="Bank Transfer">Bank Transfer</option><option value="Cheque">Cheque</option><option value="UPI">UPI</option><option value="Cash">Cash</option></select></div>'
+    + '</div>';
+  container.appendChild(p4);
+
+  // Navigation buttons
+  var navRow = el('div', '', 'display:flex;justify-content:space-between;align-items:center;margin-top:24px;padding-top:16px;border-top:1px solid var(--border);');
+  var leftDiv = el('div', '', 'display:flex;gap:8px;');
+  var backBtn = document.createElement('button'); backBtn.className = 'btn btn-ghost'; backBtn.id = 'qa-back-btn'; backBtn.textContent = 'Back'; backBtn.style.display = 'none'; backBtn.onclick = qaBack;
+  var cancelBtn = document.createElement('button'); cancelBtn.className = 'btn btn-ghost'; cancelBtn.textContent = 'Cancel'; cancelBtn.onclick = resetScan;
+  leftDiv.appendChild(backBtn); leftDiv.appendChild(cancelBtn);
+
+  var rightDiv = el('div', '', 'display:flex;gap:8px;align-items:center;');
+  var stepIndicator = el('div', '', 'font-family:DM Mono,monospace;font-size:11px;color:var(--text3);');
+  stepIndicator.id = 'qa-step-indicator'; stepIndicator.textContent = 'Step 1 of 4';
+  var nextBtn = document.createElement('button'); nextBtn.className = 'btn btn-primary btn-lg'; nextBtn.id = 'qa-next-btn'; nextBtn.textContent = 'Next Step'; nextBtn.onclick = qaNext;
+  rightDiv.appendChild(stepIndicator); rightDiv.appendChild(nextBtn);
+  navRow.appendChild(leftDiv); navRow.appendChild(rightDiv);
+  container.appendChild(navRow);
+}
+
+function quickFetchGSTIN() {
+  var inv = currentScanInv;
+  if (!inv) return;
+  var mockData = {
+    '27AAACR3592Q1ZP': {name:'Raju Printers & Stationers', entity:'Proprietorship'},
+    '29AABCC4521M1Z3': {name:'CloudHost Technologies Pvt. Ltd.', entity:'Private Limited'},
+    '07AAHCS1234R1Z5': {name:'Sharma & Associates', entity:'Partnership'}
+  };
+  var data = mockData[inv.gstin] || {name:'Vendor ' + inv.gstin.substring(2,7), entity:'Private Limited'};
+  document.getElementById('qa-name').value = data.name;
+  document.getElementById('qa-entity').value = data.entity;
+  showToast('GSTIN data fetched');
+}
+
+function qaAutoTDSRate(section) {
+  var rates = {'194C':[1,30000],'194J':[10,30000],'194I':[10,240000],'194A':[10,40000],'194H':[5,15000],'194M':[5,5000000]};
+  if (rates[section]) {
+    document.getElementById('qa-tds-rate').value = rates[section][0];
+    document.getElementById('qa-tds-threshold').value = rates[section][1];
+    document.getElementById('qa-tds-hint').textContent = 'Standard rate for ' + section;
+    document.getElementById('qa-tds-hint').className = 'form-hint success';
+  }
+}
+
+function qaToggleMSME(val) {
+  var show = val === 'yes';
+  document.getElementById('qa-msme-cat-grp').style.display = show ? '' : 'none';
+  document.getElementById('qa-udyam-grp').style.display = show ? '' : 'none';
+  if (show && document.getElementById('qa-payment-days') && !document.getElementById('qa-payment-days').value) {
+    document.getElementById('qa-payment-days').value = '45';
+  }
+}
+
+function qaSetStep(step) {
+  quickAddStep = step;
+  for (var i = 1; i <= 4; i++) {
+    var page = document.getElementById('qs-page-' + i);
+    var tab = document.getElementById('qs-tab-' + i);
+    if (page) page.className = 'qs-page' + (i === step ? ' active' : '');
+    if (tab) {
+      if (i === step) tab.className = 'qs-step active';
+      else if (i < step) tab.className = 'qs-step done';
+      else tab.className = 'qs-step';
+    }
+  }
+  var backBtn = document.getElementById('qa-back-btn');
+  var nextBtn = document.getElementById('qa-next-btn');
+  var indicator = document.getElementById('qa-step-indicator');
+  if (backBtn) backBtn.style.display = step > 1 ? '' : 'none';
+  if (nextBtn) nextBtn.textContent = step === 4 ? 'Save Vendor & Process Bill' : 'Next Step';
+  if (indicator) indicator.textContent = 'Step ' + step + ' of 4';
+}
+
+function qaBack() { if (quickAddStep > 1) qaSetStep(quickAddStep - 1); }
+
+function qaNext() {
+  if (quickAddStep === 1) {
+    var name = document.getElementById('qa-name') && document.getElementById('qa-name').value.trim();
+    if (!name) { showToast('Please enter the vendor legal name', true); return; }
+    qaSetStep(2);
+  } else if (quickAddStep === 2) {
+    qaSetStep(3);
+  } else if (quickAddStep === 3) {
+    qaSetStep(4);
+  } else if (quickAddStep === 4) {
+    var ledger = document.getElementById('qa-ledger') && document.getElementById('qa-ledger').value.trim();
+    if (!ledger) { showToast('Please enter the expense ledger name', true); return; }
+    quickAddSaveAndProcess();
+  }
+}
+
+function quickAddSaveAndProcess() {
+  var inv = currentScanInv;
+  if (!inv) return;
+  var vendor = {
+    id: String(Date.now()),
+    name: document.getElementById('qa-name').value.trim(),
+    gstin: inv.gstin,
+    pan: inv.gstin.substring(2, 12),
+    entity: document.getElementById('qa-entity').value,
+    tdsApplicable: document.getElementById('qa-tds-applicable').value,
+    tdsSection: document.getElementById('qa-tds-section').value,
+    tdsRate: parseFloat(document.getElementById('qa-tds-rate').value) || 0,
+    tdsThreshold: parseFloat(document.getElementById('qa-tds-threshold').value) || 0,
+    rcm: document.getElementById('qa-rcm').value,
+    msme: document.getElementById('qa-msme').value === 'yes',
+    msmeCat: document.getElementById('qa-msme-cat') ? document.getElementById('qa-msme-cat').value : 'Micro',
+    udyam: document.getElementById('qa-udyam') ? document.getElementById('qa-udyam').value : '',
+    einvoice: document.getElementById('qa-einvoice').value,
+    einvoiceSlab: document.getElementById('qa-einvoice-slab').value,
+    einvoiceQR: document.getElementById('qa-einvoice-qr').value,
+    ledger: document.getElementById('qa-ledger').value.trim(),
+    ledgerGroup: document.getElementById('qa-ledger-group').value,
+    creditLimit: parseFloat(document.getElementById('qa-credit-limit').value) || 0,
+    paymentDays: parseInt(document.getElementById('qa-payment-days').value) || 30,
+    paymentMode: document.getElementById('qa-payment-mode').value,
+    bankAcc: '', bankIFSC: '', bankName: ''
+  };
+  vendors.push(vendor);
+  renderVendorTable();
+  updateStats();
+  // Hide quick-add, show scan result
+  document.getElementById('scan-quickadd-view').style.display = 'none';
+  document.getElementById('scan-quickadd-view').innerHTML = '';
+  currentScanVendor = vendor;
+  showProc('Processing bill with new vendor...');
+  setTimeout(function() {
+    hideProc();
+    buildScanResult(inv, vendor);
+    showToast('Vendor "' + vendor.name + '" saved and bill processed');
+  }, 800);
+}
+
+function resetScan() {
+  document.getElementById('scan-upload-view').style.display = 'block';
+  document.getElementById('scan-result-view').style.display = 'none';
+  document.getElementById('scan-result-view').innerHTML = '';
+  document.getElementById('scan-quickadd-view').style.display = 'none';
+  document.getElementById('scan-quickadd-view').innerHTML = '';
+  document.getElementById('scan-file-input').value = '';
+  currentScanInv = null; currentScanVendor = null;
+}
+
+function renderEntries() {
+  var list = document.getElementById('entries-list');
+  var empty = document.getElementById('entries-empty');
+  if (journalEntries.length === 0) { empty.style.display = 'block'; list.style.display = 'none'; return; }
+  empty.style.display = 'none'; list.style.display = 'flex';
+  list.innerHTML = '';
+  for (var i = 0; i < journalEntries.length; i++) {
+    var e = journalEntries[i];
+    var card = el('div','card');
+    var ch = el('div','card-header');
+    ch.innerHTML = '<div><div class="card-title">' + e.inv.invoice + ' - ' + e.vendor.name + '</div><div style="font-family:DM Mono,monospace;font-size:11px;color:var(--text3);margin-top:2px;">' + e.date + ' - ' + e.narration + '</div></div><div style="display:flex;gap:8px;align-items:center;"><span class="badge badge-gold">TDS Rs.' + e.tdsAmt.toLocaleString('en-IN') + '</span><span class="badge badge-green">Net Rs.' + e.netPayable.toLocaleString('en-IN') + '</span></div>';
+    card.appendChild(ch);
+    list.appendChild(card);
+  }
+  document.getElementById('recent-entries-body').innerHTML = list.innerHTML;
+}
+
+function renderTallyExport() {
+  var empty = document.getElementById('tally-empty');
+  var content = document.getElementById('tally-content');
+  if (journalEntries.length === 0) { empty.style.display = 'block'; content.style.display = 'none'; return; }
+  empty.style.display = 'none'; content.style.display = 'block';
+  var tl = document.getElementById('tally-list');
+  tl.innerHTML = '';
+  for (var i = 0; i < journalEntries.length; i++) {
+    var e = journalEntries[i];
+    var card = el('div','card');
+    var ch = el('div','card-header');
+    ch.innerHTML = '<div class="card-title">' + e.inv.invoice + ' - ' + e.vendor.name + '</div>';
+    card.appendChild(ch);
+    var cb = el('div','card-body');
+    var pre = document.createElement('pre');
+    pre.style.cssText = 'background:var(--surface2);border-radius:4px;padding:14px;font-family:DM Mono,monospace;font-size:11px;color:var(--text3);overflow-x:auto;line-height:1.8;';
+    pre.textContent = buildTallyXML(e.inv, e.vendor, e.tdsAmt, e.netPayable);
+    cb.appendChild(pre);
+    card.appendChild(cb);
+    tl.appendChild(card);
+  }
+}
+
+function buildTallyXML(inv, vendor, tdsAmt, netPayable) {
+  var tdsBlock = tdsAmt > 0 ? '\n        <ALLLEDGERENTRIES.LIST>\n          <LEDGERNAME>TDS Payable ' + vendor.tdsSection + '</LEDGERNAME>\n          <AMOUNT>' + tdsAmt + '</AMOUNT>\n        </ALLLEDGERENTRIES.LIST>' : '';
+  return '<?xml version="1.0" encoding="UTF-8"?>\n<ENVELOPE>\n  <HEADER><TALLYREQUEST>Import Data</TALLYREQUEST></HEADER>\n  <BODY><IMPORTDATA>\n    <REQUESTDESC><REPORTNAME>Vouchers</REPORTNAME></REQUESTDESC>\n    <REQUESTDATA><TALLYMESSAGE>\n      <VOUCHER VCHTYPE="Purchase" ACTION="Create">\n        <DATE>' + inv.date + '</DATE>\n        <VOUCHERNUMBER>' + inv.invoice + '</VOUCHERNUMBER>\n        <PARTYLEDGERNAME>' + vendor.name + '</PARTYLEDGERNAME>\n        <ALLLEDGERENTRIES.LIST>\n          <LEDGERNAME>' + vendor.ledger + '</LEDGERNAME>\n          <AMOUNT>-' + inv.subTotal + '</AMOUNT>\n        </ALLLEDGERENTRIES.LIST>\n        <ALLLEDGERENTRIES.LIST>\n          <LEDGERNAME>CGST Input</LEDGERNAME>\n          <AMOUNT>-' + inv.cgst + '</AMOUNT>\n        </ALLLEDGERENTRIES.LIST>\n        <ALLLEDGERENTRIES.LIST>\n          <LEDGERNAME>SGST Input</LEDGERNAME>\n          <AMOUNT>-' + inv.sgst + '</AMOUNT>\n        </ALLLEDGERENTRIES.LIST>' + tdsBlock + '\n        <ALLLEDGERENTRIES.LIST>\n          <LEDGERNAME>' + vendor.name + '</LEDGERNAME>\n          <AMOUNT>' + netPayable + '</AMOUNT>\n        </ALLLEDGERENTRIES.LIST>\n      </VOUCHER>\n    </TALLYMESSAGE></REQUESTDATA>\n  </IMPORTDATA></BODY>\n</ENVELOPE>';
+}
+
+function downloadEntryXML(inv, vendor, tdsAmt, netPayable) {
+  var xml = buildTallyXML(inv, vendor, tdsAmt, netPayable);
+  var blob = new Blob([xml], {type:'text/xml'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = 'tally_' + inv.invoice.replace(/\//g,'_') + '.xml'; a.click();
+  showToast('Tally XML downloaded');
+}
+
+function downloadAllXML() {
+  if (journalEntries.length === 0) return;
+  var all = '';
+  for (var i = 0; i < journalEntries.length; i++) {
+    var e = journalEntries[i];
+    all += buildTallyXML(e.inv, e.vendor, e.tdsAmt, e.netPayable) + '\n\n';
+  }
+  var blob = new Blob([all], {type:'text/xml'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a'); a.href = url; a.download = 'tally_batch.xml'; a.click();
+  showToast('Batch XML downloaded');
+}
+
+function downloadAllCSV() {
+  if (journalEntries.length === 0) return;
+  var rows = ['Invoice,Date,Vendor,GSTIN,Ledger,Base Amt,CGST,SGST,TDS,Net Payable,Grand Total'];
+  for (var i = 0; i < journalEntries.length; i++) {
+    var e = journalEntries[i];
+    rows.push(e.inv.invoice + ',' + e.inv.date + ',"' + e.vendor.name + '",' + e.vendor.gstin + ',"' + e.vendor.ledger + '",' + e.inv.subTotal + ',' + e.inv.cgst + ',' + e.inv.sgst + ',' + e.tdsAmt + ',' + e.netPayable + ',' + e.inv.grandTotal);
+  }
+  var blob = new Blob([rows.join('\n')], {type:'text/csv'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a'); a.href = url; a.download = 'journal_entries.csv'; a.click();
+  showToast('CSV exported');
+}
+
+// ── API Key Management ────────────────────────────────────
+function selectProvider(p) {
+  var gc = document.getElementById('provider-gemini-card');
+  var cc = document.getElementById('provider-claude-card');
+  var gf = document.getElementById('gemini-fields');
+  var cf = document.getElementById('claude-fields');
+  if (p === 'gemini') {
+    gc.style.border = '2px solid var(--accent)'; gc.style.background = 'var(--accent-dim)';
+    gc.querySelector('div').style.color = 'var(--accent)';
+    cc.style.border = '2px solid var(--border2)'; cc.style.background = '';
+    cc.querySelector('div').style.color = 'var(--text2)';
+    gf.style.display = ''; cf.style.display = 'none';
+  } else {
+    cc.style.border = '2px solid var(--blue)'; cc.style.background = 'var(--blue-dim)';
+    cc.querySelector('div').style.color = 'var(--blue)';
+    gc.style.border = '2px solid var(--border2)'; gc.style.background = '';
+    gc.querySelector('div').style.color = 'var(--text2)';
+    cf.style.display = ''; gf.style.display = 'none';
+  }
+}
+
+function validateGeminiKey(val) {
+  var hint = document.getElementById('gemini-key-hint');
+  if (val.indexOf('AIzaSy') === 0) { hint.textContent = 'Valid format'; hint.className = 'form-hint success'; }
+  else { hint.textContent = 'Starts with AIzaSy'; hint.className = 'form-hint'; }
+}
+
+function validateClaudeKey(val) {
+  var hint = document.getElementById('claude-key-hint');
+  if (val.indexOf('sk-ant-') === 0) { hint.textContent = 'Valid format'; hint.className = 'form-hint success'; }
+  else { hint.textContent = 'Starts with sk-ant-'; hint.className = 'form-hint'; }
+}
+
+function openAPISettings() {
+  var provider = localStorage.getItem('ai_provider') || 'gemini';
+  var gKey = localStorage.getItem('gemini_api_key') || '';
+  var cKey = localStorage.getItem('claude_api_key') || '';
+  var gModel = localStorage.getItem('gemini_model') || 'gemini-2.0-flash';
+  var cModel = localStorage.getItem('claude_model') || 'claude-haiku-4-5-20251001';
+
+  document.getElementById('gemini-key-input').value = gKey;
+  document.getElementById('claude-key-input').value = cKey;
+  document.getElementById('gemini-model-select').value = gModel;
+  document.getElementById('claude-model-select').value = cModel;
+
+  var statusEl = document.getElementById('api-key-status');
+  if (provider === 'gemini' && gKey) statusEl.textContent = 'Active: Gemini - ' + gKey.substring(0,10) + '...';
+  else if (provider === 'claude' && cKey) statusEl.textContent = 'Active: Claude - ' + cKey.substring(0,12) + '...';
+  else statusEl.textContent = 'No key saved yet';
+
+  selectProvider(provider);
+  document.getElementById('add-vendor-modal').classList.remove('show');
+  document.getElementById('api-key-modal').classList.add('show');
+}
+
+function saveAPIKey() {
+  var isGemini = document.getElementById('gemini-fields').style.display !== 'none';
+  if (isGemini) {
+    var key = document.getElementById('gemini-key-input').value.trim();
+    var model = document.getElementById('gemini-model-select').value;
+    if (!key || key.indexOf('AIzaSy') !== 0) {
+      document.getElementById('gemini-key-hint').textContent = 'Key must start with AIzaSy';
+      document.getElementById('gemini-key-hint').className = 'form-hint error';
+      return;
+    }
+    localStorage.setItem('ai_provider', 'gemini');
+    localStorage.setItem('gemini_api_key', key);
+    localStorage.setItem('gemini_model', model);
+  } else {
+    var key = document.getElementById('claude-key-input').value.trim();
+    var model = document.getElementById('claude-model-select').value;
+    if (!key || key.indexOf('sk-ant-') !== 0) {
+      document.getElementById('claude-key-hint').textContent = 'Key must start with sk-ant-';
+      document.getElementById('claude-key-hint').className = 'form-hint error';
+      return;
+    }
+    localStorage.setItem('ai_provider', 'claude');
+    localStorage.setItem('claude_api_key', key);
+    localStorage.setItem('claude_model', model);
+  }
+  closeModal('api-key-modal');
+  updateAIStatusBtn();
+  showToast('AI enabled and saved permanently in this browser');
+}
+
+function clearAPIKey() {
+  localStorage.removeItem('ai_provider');
+  localStorage.removeItem('gemini_api_key');
+  localStorage.removeItem('gemini_model');
+  localStorage.removeItem('claude_api_key');
+  localStorage.removeItem('claude_model');
+  document.getElementById('gemini-key-input').value = '';
+  document.getElementById('claude-key-input').value = '';
+  document.getElementById('api-key-status').textContent = 'All keys cleared';
+  updateAIStatusBtn();
+  showToast('API keys cleared');
+}
+
+function updateAIStatusBtn() {
+  var btn = document.getElementById('ai-settings-btn');
+  if (!btn) return;
+  var provider = localStorage.getItem('ai_provider');
+  var gKey = localStorage.getItem('gemini_api_key');
+  var cKey = localStorage.getItem('claude_api_key');
+  var active = (provider === 'gemini' && gKey) || (provider === 'claude' && cKey);
+  var sidebarEl = document.getElementById('sidebar-ai-status');
+  if (active) {
+    btn.title = (provider === 'gemini' ? 'Gemini' : 'Claude') + ' AI active - click to change';
+    btn.className = 'btn btn-ghost btn-sm ai-on';
+    if (sidebarEl) { sidebarEl.textContent = (provider === 'gemini' ? 'Gemini' : 'Claude') + ': Active'; sidebarEl.style.color = 'var(--accent)'; }
+  } else {
+    btn.title = 'AI not configured - click to set up';
+    btn.className = 'btn btn-ghost btn-sm';
+    if (sidebarEl) { sidebarEl.textContent = 'AI: Tap to set up (free)'; sidebarEl.style.color = 'var(--amber)'; }
+  }
+}
+
+function updateMemoryBadge() {
+  var all = cmGetAll();
+  var badge = document.getElementById('memory-badge');
+  if (badge) badge.textContent = all.length;
+}
+
+function cmClearAndRefresh(btn) {
+  var gstin = btn.id.replace('cm-clear-','');
+  cmClear(gstin);
+  renderMemoryPanel();
+  showToast('Memory cleared');
+}
+
+function renderMemoryPanel() {
+  var all = cmGetAll();
+  var list = document.getElementById('memory-list');
+  if (!list) return;
+  list.innerHTML = '';
+  updateMemoryBadge();
+  if (!all.length) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-icon">&#129504;</div><div class="empty-title">No corrections yet</div><div class="empty-text">Post an entry after correcting extracted values.<br>The app remembers for next time.</div></div>';
+    return;
+  }
+  var fieldLabels = {invoice:'Invoice No.',vendorName:'Vendor Name',grandTotal:'Grand Total',subTotal:'Sub Total',cgst:'CGST',sgst:'SGST',igst:'IGST'};
+  all.forEach(function(item) {
+    var vendor = vendors.find(function(v){ return v.gstin === item.gstin; });
+    var vName = vendor ? vendor.name : item.gstin;
+    var d = item.data;
+    var card = el('div','card','margin-bottom:10px;');
+    var ch = el('div','card-header');
+    ch.innerHTML = '<div><div class="card-title">&#129504; ' + vName + '</div>'
+      + '<div style="font-size:11px;color:var(--text3);font-family:DM Mono,monospace;margin-top:2px;">GSTIN: ' + item.gstin
+      + (d._count ? ' | Learned ' + d._count + ' time(s)' : '')
+      + (d._date ? ' | Last: ' + d._date : '') + '</div></div>'
+      + '<button class="btn btn-danger btn-sm" id="cm-clear-' + item.gstin + '" onclick="cmClearAndRefresh(this)">Clear</button>';
+    card.appendChild(ch);
+    var cb = el('div','card-body','');
+    var hasFields = false;
+    Object.keys(d).forEach(function(f) {
+      if (f.startsWith('_') || !fieldLabels[f]) return;
+      hasFields = true;
+      var row = el('div','','display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px;');
+      row.innerHTML = '<span style="color:var(--text3);font-family:DM Mono,monospace;">' + (fieldLabels[f]||f) + '</span>'
+        + '<span style="font-weight:600;color:var(--text);font-family:DM Mono,monospace;">' + d[f] + '</span>';
+      cb.appendChild(row);
+    });
+    if (hasFields) card.appendChild(cb);
+    list.appendChild(card);
+  });
+}
 
 
+function updateStats() {
+  document.getElementById('stat-vendors').textContent = vendors.length;
+  document.getElementById('stat-bills').textContent = journalEntries.length;
+  var totalTDS = 0, totalGST = 0;
+  for (var i = 0; i < journalEntries.length; i++) { totalTDS += journalEntries[i].tdsAmt; totalGST += journalEntries[i].inv.cgst + journalEntries[i].inv.sgst; }
+  document.getElementById('stat-tds').textContent = 'Rs.' + totalTDS.toLocaleString('en-IN');
+  document.getElementById('stat-gst').textContent = 'Rs.' + totalGST.toLocaleString('en-IN');
+  document.getElementById('vendor-count-badge').textContent = vendors.length;
+  document.getElementById('entry-count-badge').textContent = journalEntries.length;
+}
+
+function showProc(msg) { document.getElementById('proc-text').textContent = msg; document.getElementById('proc-overlay').classList.add('show'); }
+function updateProcText(msg) { document.getElementById('proc-text').textContent = msg; }
+function hideProc() { document.getElementById('proc-overlay').classList.remove('show'); }
+
+function showToast(msg, isError) {
+  var t = document.getElementById('toast');
+  document.getElementById('toast-msg').textContent = msg;
+  document.getElementById('toast-icon').textContent = isError ? 'x' : 'v';
+  t.className = 'toast' + (isError ? ' error' : '');
+  t.classList.add('show');
+  setTimeout(function() { t.classList.remove('show'); }, 3200);
+}
+
+// Drag and drop
+var dz = document.getElementById('scan-file-input');
+updateAIStatusBtn();
+var dropArea = document.querySelector('.drop-zone');
+if (dropArea) {
+  dropArea.addEventListener('dragover', function(e) { e.preventDefault(); dropArea.style.borderColor = '#4ade8060'; });
+  dropArea.addEventListener('dragleave', function() { dropArea.style.borderColor = ''; });
+  dropArea.addEventListener('drop', function(e) { e.preventDefault(); dropArea.style.borderColor = ''; runDemoScan(0); });
+}
+</script>
+</body>
+</html>
