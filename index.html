@@ -607,9 +607,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         <div style="margin-top:12px;">
           <div style="font-family:DM Mono,monospace;font-size:10px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">Model</div>
           <select class="form-select" id="gemini-model-select">
-            <option value="gemini-2.0-flash">Gemini 2.0 Flash - Recommended (Free)</option>
-            <option value="gemini-1.5-flash-latest">Gemini 1.5 Flash - Very reliable (Free)</option>
-            <option value="gemini-1.5-pro-latest">Gemini 1.5 Pro - Most accurate (Free tier limited)</option>
+            <option value="gemini-2.0-flash" selected>Gemini 2.0 Flash — Recommended (Free)</option>
+            <option value="gemini-1.5-flash">Gemini 1.5 Flash (Free)</option>
+            <option value="gemini-1.5-pro">Gemini 1.5 Pro (Free tier limited)</option>
           </select>
         </div>
       </div>
@@ -1115,7 +1115,9 @@ async function extractWithClaudeAI(file, base64) {
 async function extractWithGeminiAPI(file, base64, apiKey) {
   var isPDF = file.type === 'application/pdf';
   var mime = isPDF ? 'application/pdf' : (file.type || 'image/jpeg');
+  var validModels = ['gemini-2.0-flash','gemini-1.5-flash','gemini-1.5-pro'];
   var model = localStorage.getItem('gemini_model') || 'gemini-2.0-flash';
+  if (validModels.indexOf(model) < 0) { model = 'gemini-2.0-flash'; localStorage.setItem('gemini_model','gemini-2.0-flash'); }
   var url = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + apiKey;
   var part = { inline_data: { mime_type: mime, data: base64 } };
   var resp = await fetch(url, {
@@ -1139,7 +1141,7 @@ async function extractWithClaudeAPI(file, base64, apiKey) {
   var resp = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'Content-Type':'application/json', 'anthropic-version':'2023-06-01', 'x-api-key': apiKey },
-    body: JSON.stringify({ model:'claude-opus-4-6', max_tokens:1500, messages:[{ role:'user', content:[docBlock, { type:'text', text:AI_PROMPT }] }] })
+    body: JSON.stringify({ model:'claude-sonnet-4-6', max_tokens:1500, messages:[{ role:'user', content:[docBlock, { type:'text', text:AI_PROMPT }] }] })
   });
   var data = await resp.json();
   if (data.error) throw new Error('Claude: ' + data.error.message);
@@ -1165,88 +1167,6 @@ function parseAIResponse(raw, source) {
   };
 }
 
-
-async function extractWithGeminiAPI(file, base64, apiKey) {
-  var isPDF = file.type === 'application/pdf';
-  var mime = isPDF ? 'application/pdf' : (file.type || 'image/jpeg');
-  var model = localStorage.getItem('gemini_model') || 'gemini-2.0-flash';
-  var url = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + apiKey;
-
-  var part = isPDF
-    ? { inline_data: { mime_type: 'application/pdf', data: base64 } }
-    : { inline_data: { mime_type: mime, data: base64 } };
-
-  var body = { contents: [{ parts: [part, { text: AI_PROMPT }] }] };
-
-  var resp = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
-  });
-
-  var data = await resp.json();
-  if (data.error) throw new Error('Gemini: ' + data.error.message);
-
-  var raw = '';
-  try { raw = data.candidates[0].content.parts[0].text; } catch(e) { throw new Error('Gemini: no response'); }
-
-  return parseAIResponse(raw, 'Gemini AI');
-}
-
-async function extractWithClaudeAPI(file, base64, apiKey) {
-  var isPDF = file.type === 'application/pdf';
-  var mime = isPDF ? 'application/pdf' : (file.type || 'image/jpeg');
-
-  var docBlock = isPDF
-    ? { type:'document', source:{ type:'base64', media_type:'application/pdf', data:base64 } }
-    : { type:'image',    source:{ type:'base64', media_type:mime, data:base64 } };
-
-  var resp = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'anthropic-version': '2023-06-01',
-      'x-api-key': apiKey
-    },
-    body: JSON.stringify({
-      model: 'claude-opus-4-6',
-      max_tokens: 1500,
-      messages: [{ role:'user', content:[ docBlock, { type:'text', text:AI_PROMPT } ] }]
-    })
-  });
-
-  var data = await resp.json();
-  if (data.error) throw new Error('Claude: ' + data.error.message);
-
-  var raw = '';
-  for (var i = 0; i < (data.content||[]).length; i++) {
-    if (data.content[i].type === 'text') { raw = data.content[i].text; break; }
-  }
-  return parseAIResponse(raw, 'Claude AI');
-}
-
-function parseAIResponse(raw, source) {
-  raw = (raw||'').trim().replace(/^```[a-z]*\n?/, '').replace(/```$/, '').trim();
-  var s = raw.indexOf('{'), e = raw.lastIndexOf('}');
-  if (s >= 0 && e > s) raw = raw.substring(s, e + 1);
-  var ext = JSON.parse(raw);
-  return {
-    gstin:      String(ext.gstin      || ''),
-    invoice:    String(ext.invoice    || 'Unknown'),
-    date:       String(ext.date       || ''),
-    vendorName: String(ext.vendorName || ''),
-    subTotal:   Number(ext.subTotal)  || 0,
-    cgst:       Number(ext.cgst)      || 0,
-    sgst:       Number(ext.sgst)      || 0,
-    igst:       Number(ext.igst)      || 0,
-    grandTotal: Number(ext.grandTotal)|| 0,
-    lineItems:  Array.isArray(ext.lineItems) ? ext.lineItems : [],
-    irn:        ext.irn || null,
-    qrVerified: !!ext.qrVerified,
-    aiExtracted: true,
-    extractionMethod: source
-  };
-}
 
 // ── Show results after processing ──────────────────────────
 function showBillResults(results) {
@@ -1418,11 +1338,13 @@ async function sendBillChat(question, bills) {
   try {
     var resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
+      headers: (function(){
+        var h = {'Content-Type':'application/json','anthropic-version':'2023-06-01'};
+        var ck = localStorage.getItem('claude_api_key');
+        if (ck) h['x-api-key'] = ck;
+        else h['anthropic-dangerous-direct-browser-access'] = 'true';
+        return h;
+      })(),
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
         max_tokens: 500,
@@ -2382,7 +2304,15 @@ function saveAPIKey() {
     localStorage.setItem('claude_model', model);
   }
   closeModal('api-key-modal');
-  updateAIStatusBtn();
+  // Clean up any bad model values from old versions
+(function() {
+  var m = localStorage.getItem('gemini_model');
+  var validModels = ['gemini-2.0-flash','gemini-1.5-flash','gemini-1.5-pro'];
+  if (!m || validModels.indexOf(m) < 0) {
+    localStorage.setItem('gemini_model', 'gemini-2.0-flash');
+  }
+})();
+updateAIStatusBtn();
   showToast('AI enabled and saved permanently in this browser');
 }
 
